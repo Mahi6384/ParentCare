@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ParentCare — Product Plan</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d1117;
+    --card: #161b27;
+    --card2: #1a2035;
+    --purple: #7c6fcd;
+    --teal: #2dd4bf;
+    --gold: #f5a623;
+    --red: #e05a5a;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --border: rgba(255,255,255,0.07);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* ── SLIDE WRAPPER ── */
+  .slide {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 80px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .slide::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 80% 20%, rgba(124,111,205,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse at 20% 80%, rgba(45,212,191,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  /* ── SLIDE HEADER ── */
+  .slide-header { margin-bottom: 48px; }
+  .slide-header h1 {
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .underline {
+    height: 4px;
+    width: 60px;
+    border-radius: 2px;
+    margin-top: 12px;
+  }
+  .u-purple { background: var(--purple); }
+  .u-teal   { background: var(--teal); }
+  .u-gold   { background: var(--gold); }
+  .u-red    { background: var(--red); }
+
+  /* ── HERO SLIDE ── */
+  #hero {
+    background: linear-gradient(135deg, #0d1117 0%, #111827 100%);
+    text-align: center;
+    align-items: center;
+  }
+  #hero .badge {
+    display: inline-block;
+    background: rgba(124,111,205,0.15);
+    border: 1px solid rgba(124,111,205,0.35);
+    color: var(--purple);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 100px;
+    margin-bottom: 28px;
+  }
+  #hero h1 {
+    font-size: clamp(3rem, 7vw, 5.5rem);
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 30%, var(--teal) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 20px;
+  }
+  #hero .tagline {
+    font-size: clamp(1rem, 2vw, 1.35rem);
+    color: var(--muted);
+    max-width: 560px;
+    margin: 0 auto 40px;
+  }
+  .pill-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .pill {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 8px 20px;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+
+  /* ── 3-COLUMN GRID ── */
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card.accent-purple { border-top: 3px solid var(--purple); }
+  .card.accent-teal   { border-top: 3px solid var(--teal); }
+  .card.accent-gold   { border-top: 3px solid var(--gold); }
+  .card.accent-red    { border-top: 3px solid var(--red); }
+
+  .card-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+    margin-bottom: 16px;
+  }
+  .icon-purple { background: rgba(124,111,205,0.15); }
+  .icon-teal   { background: rgba(45,212,191,0.15); }
+  .icon-gold   { background: rgba(245,166,35,0.15); }
+  .icon-red    { background: rgba(224,90,90,0.15); }
+
+  .card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; }
+  .card p  { font-size: 0.85rem; color: var(--muted); line-height: 1.65; }
+
+  /* ── FLOW STEPS ── */
+  .flow {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    margin-top: 40px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .flow-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    position: relative;
+  }
+  .flow-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 28px;
+    right: -50%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--teal), var(--purple));
+    z-index: 0;
+  }
+  .flow-circle {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+    border: 2px solid;
+    background: var(--card2);
+    position: relative;
+    z-index: 1;
+    margin-bottom: 14px;
+  }
+  .fc-purple { border-color: var(--purple); }
+  .fc-teal   { border-color: var(--teal); }
+  .fc-gold   { border-color: var(--gold); }
+  .flow-step p { font-size: 0.75rem; color: var(--muted); line-height: 1.45; max-width: 100px; }
+  .flow-step strong { display: block; font-size: 0.82rem; color: var(--text); margin-bottom: 4px; }
+
+  /* ── HIGHLIGHT BOX ── */
+  .highlight-box {
+    border: 1px solid rgba(124,111,205,0.4);
+    background: rgba(124,111,205,0.07);
+    border-radius: 12px;
+    padding: 20px 28px;
+    margin-top: 36px;
+    font-size: 0.9rem;
+    color: #c4bef0;
+    line-height: 1.7;
+  }
+
+  /* ── ARCH TABLE ── */
+  .arch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .arch-col {
+    background: var(--card);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .arch-col-header {
+    padding: 14px 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .ah-purple { background: rgba(124,111,205,0.25); color: var(--purple); }
+  .ah-slate  { background: rgba(100,116,139,0.25); color: #94a3b8; }
+  .ah-teal   { background: rgba(45,212,191,0.2);  color: var(--teal); }
+  .arch-col ul { list-style: none; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .arch-col li {
+    font-size: 0.82rem;
+    color: var(--muted);
+    padding-left: 16px;
+    position: relative;
+  }
+  .arch-col li::before { content: '→'; position: absolute; left: 0; color: var(--teal); }
+
+  /* ── STACK TABLE ── */
+  .stack-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  .stack-table th {
+    text-align: left;
+    padding: 10px 16px;
+    color: var(--muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .stack-table td { padding: 11px 16px; border-bottom: 1px solid var(--border); color: var(--text); }
+  .stack-table td:first-child { color: var(--muted); font-size: 0.78rem; }
+  .stack-table td:nth-child(2) { font-weight: 600; color: var(--teal); }
+  .stack-table td:nth-child(3) { color: var(--muted); font-size: 0.8rem; }
+  .stack-table tr:last-child td { border-bottom: none; }
+  .stack-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  /* ── ROADMAP ── */
+  .roadmap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .phase-card {
+    background: var(--card);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .phase-header {
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .phase-num {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800;
+    font-size: 0.9rem;
+    border: 2px solid;
+  }
+  .pn-purple { border-color: var(--purple); color: var(--purple); background: rgba(124,111,205,0.1); }
+  .pn-teal   { border-color: var(--teal);   color: var(--teal);   background: rgba(45,212,191,0.1); }
+  .pn-gold   { border-color: var(--gold);   color: var(--gold);   background: rgba(245,166,35,0.1); }
+  .phase-header h3 { font-size: 1rem; font-weight: 700; }
+  .phase-header span { font-size: 0.75rem; color: var(--muted); display: block; margin-top: 2px; }
+  .phase-items { padding: 0 24px 24px; display: flex; flex-direction: column; gap: 10px; }
+  .check-item { display: flex; align-items: flex-start; gap: 10px; font-size: 0.82rem; color: var(--muted); }
+  .check-icon { font-size: 0.8rem; margin-top: 2px; flex-shrink: 0; }
+  .ci-purple { color: var(--purple); }
+  .ci-teal   { color: var(--teal); }
+  .ci-gold   { color: var(--gold); }
+
+  /* ── RECRUITER ── */
+  .rec-item {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 20px 24px;
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+    border-left: 3px solid;
+  }
+  .rec-item.rl-purple { border-color: var(--purple); }
+  .rec-item.rl-teal   { border-color: var(--teal); }
+  .rec-item.rl-gold   { border-color: var(--gold); }
+  .rec-item.rl-red    { border-color: var(--red); }
+  .rec-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+  .rec-item h3 { font-size: 0.92rem; font-weight: 700; margin-bottom: 5px; }
+  .rec-item p  { font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+
+  /* ── SCHEMA ── */
+  .schema-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .schema-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 18px;
+    border: 1px solid var(--border);
+  }
+  .schema-card h4 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--teal);
+    margin-bottom: 10px;
+    font-family: monospace;
+    letter-spacing: 0.04em;
+  }
+  .schema-card ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  .schema-card li { font-size: 0.73rem; color: var(--muted); font-family: monospace; }
+  .schema-card li span { color: var(--purple); }
+
+  /* ── NEXT STEPS ── */
+  .steps-list { display: flex; flex-direction: column; gap: 16px; counter-reset: steps; }
+  .step-item {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    background: var(--card);
+    border-radius: 14px;
+    padding: 20px 24px;
+    border: 1px solid var(--border);
+    counter-increment: steps;
+  }
+  .step-num {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: rgba(45,212,191,0.12);
+    border: 1.5px solid var(--teal);
+    color: var(--teal);
+    font-weight: 800;
+    font-size: 0.85rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-item h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 4px; }
+  .step-item p  { font-size: 0.82rem; color: var(--muted); }
+  code {
+    background: rgba(255,255,255,0.07);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 0.8em;
+    font-family: monospace;
+    color: var(--teal);
+  }
+
+  /* ── SLIDE NAV DOTS ── */
+  .nav {
+    position: fixed;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+  }
+  .nav a {
+    display: block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    transition: background 0.2s, transform 0.2s;
+  }
+  .nav a:hover { background: var(--teal); transform: scale(1.4); }
+
+  /* ── PRINT ── */
+  @media print {
+    .nav { display: none; }
+    .slide { page-break-after: always; min-height: auto; padding: 40px 50px; }
+    body { background: white; color: #1a1a2e; }
+  }
+
+  /* ── JSON BLOCK ── */
+  .json-block {
+    background: #0a0e17;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    font-family: monospace;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: #8892a4;
+    overflow-x: auto;
+  }
+  .json-block .key   { color: #7c6fcd; }
+  .json-block .str   { color: #2dd4bf; }
+  .json-block .num   { color: #f5a623; }
+  .json-block .bool  { color: #e05a5a; }
+</style>
+</head>
+<body>
+
+<!-- NAV DOTS -->
+<nav class="nav">
+  <a href="#hero"       title="Cover"></a>
+  <a href="#problem"    title="Problem"></a>
+  <a href="#solution"   title="Solution"></a>
+  <a href="#features"   title="Features"></a>
+  <a href="#ai"         title="AI Layer"></a>
+  <a href="#alerts"     title="Alerts"></a>
+  <a href="#arch"       title="Architecture"></a>
+  <a href="#schema"     title="DB Schema"></a>
+  <a href="#stack"      title="Tech Stack"></a>
+  <a href="#roadmap"    title="Roadmap"></a>
+  <a href="#recruiter"  title="Recruiter Value"></a>
+  <a href="#nextsteps"  title="Next Steps"></a>
+</nav>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 1 — COVER                                   -->
+<!-- ══════════════════════════════════════════════════ -->
+<section class="slide" id="hero">
+  <div class="badge">Full Product Plan · 2026</div>
+  <h1>ParentCare</h1>
+  <p class="tagline">Kids assign tasks. Parents complete them.<br/>AI verifies the proof.</p>
+  <div class="pill-row">
+    <span class="pill">Next.js 14</span>
+    <span class="pill">Claude Vision</span>
+    <span class="pill">BullMQ + Redis</span>
+    <span class="pill">Supabase</span>
+    <span class="pill">WhatsApp API</span>
+    <span class="pill">WebSockets</span>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 2 — PROBLEM                                 -->
+<!-- ══════════════════════════════════════════════════ -->
+<section class="slide" id="problem">
+  <div class="slide-header">
+    <h1>The Problem</h1>
+    <div class="underline u-purple"></div>
+  </div>
+  <div class="grid-3">
+    <div class="card accent-purple">
+      <div class="card-icon icon-purple">👥</div>
+      <h3>Millions of kids live away</h3>
+      <p>Students and professionals relocate for work and education — leaving parents behind with no daily check-in mechanism.</p>
+    </div>
+    <div class="card accent-teal">
+      <div class="card-icon icon-teal">🛡️</div>
+      <h3>Parents skip healthy habits</h3>
+      <p>Without gentle pressure, parents skip walks, eat poorly, skip medicine. No one is watching. No one is nudging.</p>
+    </div>
+    <div class="card accent-gold">
+      <div class="card-icon icon-gold">📱</div>
+      <h3>No real accountability</h3>
+      <p>Phone calls are forgotten. Existing apps are too complex for parents. There is no way to verify anything was actually done.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 3 — SOLUTION                                -->
+<!-- ══════════════════════════════════════════════════ -->
+<section class="slide" id="solution">
+  <div class="slide-header">
+    <h1>The Solution</h1>
+    <div class="underline u-teal"></div>
+  </div>
+  <p style="font-size:1.25rem; color:var(--muted); margin-bottom: 8px;">A two-sided accountability platform with AI at the core.</p>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-circle fc-purple">⌨️</div>
+      <strong>Kid creates task</strong>
+      <p>Sets schedule, proof type &amp; personal note</p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-circle fc-teal">🔔</div>
+      <strong>Parent gets reminder</strong>
+      <p>WhatsApp deep-link + email at scheduled time</p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-circle fc-gold">📷</div>
+      <strong>Parent submits photo</strong>
+      <p>One tap from WhatsApp, compressed upload</p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-circle fc-purple">🧠</div>
+      <strong>AI verifies photo</strong>
+      <p>Claude Vision checks scene, food, clothing, pill label</p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-circle fc-teal">✅</div>
+      <strong>Kid gets result</strong>
+      <p>Real-time WebSocket push + streak update</p>
+    </div>
+  </div>
+
+  <div class="highlight-box">
+    The AI verification layer is the differentiator — parents can't just tick a checkbox. They submit real photo proof, which AI checks for scene, food quality, and activity. Result includes a confidence score and plain-English reason.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 4 — KEY FEATURES                           -->
+<!-- ══════════════════════════════════════════════════ -->
+<section class="slide" id="features">
+  <div class="slide-header">
+    <h1>Key Features</h1>
+    <div class="underline u-purple"></div>
+  </div>
+  <div class="grid-3">
+    <div class="card accent-purple">
+      <div class="card-icon icon-purple">&lt;/&gt;</div>
+      <h3>Smart Task Builder</h3>
+      <p>Templates for walks, diet, medicine, sleep, doctor visits. Kids set schedule, proof type, recurrence, and leave a personal voice note.</p>
+    </div>
+    <div class="card accent-teal">
+      <div class="card-icon icon-teal">🧠</div>
+      <h3>AI Photo Verification</h3>
+      <p>Claude Vision checks scene, food quality, clothing. Returns pass / flag / fail with plain-English reason and confidence score.</p>
+    </div>
+    <div class="card accent-gold">
+      <div class="card-icon icon-gold">💬</div>
+      <h3>Multi-Channel Alerts</h3>
+      <p>WhatsApp deep-links (Twilio) + Email (Resend) + in-app WebSocket bell. Parent sets their preferred channel.</p>
+    </div>
+    <div class="card accent-teal">
+      <div class="card-icon icon-teal">🥗</div>
+      <h3>Nutrition Checker</h3>
+      <p>For meal tasks, Claude estimates meal name, protein level, vegetables, fruits, and flags concerns like "no greens visible".</p>
+    </div>
+    <div class="card accent-purple">
+      <div class="card-icon icon-purple">💊</div>
+      <h3>Medication Label Check</h3>
+      <p>Claude reads the pill bottle label and confirms the correct medication matches what the kid specified. Prevents fake submissions.</p>
+    </div>
+    <div class="card accent-gold">
+      <div class="card-icon icon-gold">⚡</div>
+      <h3>Async Job Queue</h3>
+      <p>BullMQ + Redis processes photos in the background. Prevents blocking, supports retry logic and back-pressure. Parent doesn't wait.</p>
+    </div>
+    <div class="card accent-red">
+      <div class="card-icon icon-red">📈</div>
+      <h3>Streaks &amp; Dashboard</h3>
+      <p>Daily streaks, 1-free-skip-per-week freeze, milestone badges. Kid sees completion rates, history, nutrition trends.</p>
+    </div>
+    <div class="card accent-purple">
+      <div class="card-icon icon-purple">🎙️</div>
+      <h3>Voice Notes on Tasks</h3>
+      <p>Kid records a ≤30s voice note when creating a task. Parent hears it before submitting proof. Emotional connection built-in.</p>
+    </div>
+    <div class="card accent-teal">
+      <div class="card-icon icon-teal">🛡️</div>
+      <h3>Rate Limiting + Audit Log</h3>
+      <p>Redis-based per-user rate limiting prevents abuse. Full audit log of every AI decision for transparency and trust.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 5 — AI LAYER DETAIL                         -->
+<!-- ══════════════════════════════════════════════════ -->
+<section class="slide" id="ai">
+  <div class="slide-header">
+    <h1>AI Verification Layer</h1>
+    <div class="underline u-teal"></div>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:32px; align-items:start;">
+    <div>
+      <p style="color:var(--muted); font-size:0.9rem; margin-bottom:24px;">Claude claude-sonnet-4-6 Vision is the load-bearing layer of ParentCare. It's not decoration — every submission is verified before a streak is granted.</p>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="card accent-teal" style="padding:16px 20px;">
+          <h3 style="font-size:0.85rem;">🚶 Walk Task</h3>
+          <p>Checks: outdoor scene, shoes visible, natural lighting, movement context</p>
+        </div>
+        <div class="card accent-gold" style="padding:16px 20px;">
+          <h3 style="font-size:0.85rem;">🍽️ Meal Task</h3>
+          <p>Checks: food quality, identifies meal, estimates nutrition, flags concerns</p>
+        </div>
+        <div class="card accent-purple" style="padding:16px 20px;">
+          <h3 style="font-size:0.85rem;">💊 Medicine Task</h3>
+          <p>Reads pill bottle label, confirms correct medication name matches specification</p>
+        </div>
+        <div class="card accent-red" style="padding:16px 20px;">
+          <h3 style="font-size:0.85rem;">😴 Sleep Task</h3>
+          <p>Checks: dark room, person in bed, reasonable time context</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p style="font-size:0.78rem; color:var(--muted); margin-bottom:12px; font-family:monospace; letter-spacing:0.04em;">CLAUDE RESPONSE STRUCTURE</p>
+      <div class="json-block">
+{<br/>
+&nbsp;&nbsp;<span class="key">"result"</span>: <span class="str">"pass"</span>,<br/>
+&nbsp;&nbsp;<span class="key">"confidence"</span>: <span class="num">0.94</span>,<br/>
+&nbsp;&nbsp;<span class="key">"reason"</span>: <span class="str">"Parent walking outdoors<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; in park. Shoes visible."</span>,<br/>
+&nbsp;&nbsp;<span class="key">"nutrition_estimate"</span>: {<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"meal"</span>: <span class="str">"Dal rice with sabzi"</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"protein"</span>: <span class="str">"moderate"</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"vegetables"</span>: <span class="bool">true</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"fruits"</span>: <span class="bool">false</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"concern"</span>: <span class="str">"No fruit visible"</span><br/>
+&nbsp;&nbsp;},<br/>
+&nbsp;&nbsp;<span class="key">"medication_check"</span>: {<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"correct_bottle"</span>: <span class="bool">true</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"label_read"</span>: <span class="str">"Metformin 500mg"</span><br/>
+&nbsp;&nbsp;}<br/>
+}
+      </div>
+      <div class="highlight-box" style="margin-top:20px; font-size:0.82rem;">
+        Confidence score is shown to the kid. Kid can trigger manual review if they disagree. Every response is saved to the audit log — timestamp, photo URL, full Claude response.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 6 — ALERTS                                  -->
+<!-- ══════════════════════════════════════════════════ -->
+<section class="slide" id="alerts">
+  <div class="slide-header">
+    <h1>Multi-Channel Alert System</h1>
+    <div class="underline u-gold"></div>
+  </div>
+  <div class="grid-3">
+    <div class="card accent-teal">
+      <div class="card-icon icon-teal">💬</div>
+      <h3>WhatsApp (Primary)</h3>
+      <p>Twilio WhatsApp API sends a deep-link message at scheduled time. One tap opens the task directly. Works in sandbox in 10 minutes. ~₹0.4 per message.</p>
+    </div>
+    <div class="card accent-gold">
+      <div class="card-icon icon-gold">📧</div>
+      <h3>Email (Fallback)</h3>
+      <p>Resend sends a styled HTML email with task details + CTA button. Also delivers the weekly PDF report every Sunday night. Free tier: 3,000/month.</p>
+    </div>
+    <div class="card accent-purple">
+      <div class="card-icon icon-purple">🔔</div>
+      <h3>In-App Bell (Real-time)</h3>
+      <p>WebSocket pushes result to kid the moment Claude finishes. No refresh needed. Kid also sees when parent opens or skips a task.</p>
+    </div>
+  </div>
+
+  <div style="margin-top:32px; background:var(--card); border-radius:16px; padding:28px; border:1px solid var(--border);">
+    <h3 style="font-size:0.95rem; margin-bottom:18px;">Weekly PDF Report (auto-generated)</h3>
+    <div class="grid-3" style="gap:16px;">
+      <div style="font-size:0.83rem; color:var(--muted);">📊 Completion rates per task (bar chart)</div>
+      <div style="font-size:0.83rem; color:var(--muted);">🔥 Current streaks + longest streaks</div>
+      <div style="font-size:0.83rem; color:var(--muted);">🥗 Nutrition summary (weekly average)</div>
+      <div style="font-size:0.83rem; color:var(--muted);">🧠 AI confidence averages per task type</div>
+      <div style="font-size:0.83rem; color:var(--muted);">📅 Day-by-day activity calendar</div>
+      <div style="font-size:0.83rem; color:var(--muted);">Auto-emailed via Resend every Sunday</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 7 — ARCHITECTURE                            -->
+<!-- ══════════════════════════════════════════════════ -->
+<section class="slide" id="arch">
+  <div class="slide-header">
+    <h1>System Architecture</h1>
+    <div class="underline u-teal"></div>
+  </div>
+  <div class="arch-grid">
+    <div class="arch-col">
+      <div class="arch-col-header ah-purple">Kid App (Next.js PWA)</div>
+      <ul>
+        <li>Task creation UI with templates</li>
+        <li>Dashboard + streaks + badges</li>
+        <li>Real-time WebSocket result feed</li>
+        <li>Nutrition trend charts</li>
+        <li>Manual review panel (AI override)</li>
+        <li>Voice note recording</li>
+        <li>Family invite flow</li>
+      </ul>
+    </div>
+    <div class="arch-col">
+      <div class="arch-col-header ah-slate">Backend (Next.js API Routes)</div>
+      <ul>
+        <li>Supabase Auth (JWT, role claims)</li>
+        <li>BullMQ job queue (photo verify)</li>
+        <li>Redis rate limiter (per-user)</li>
+        <li>Supabase DB + Storage</li>
+        <li>Claude API caller (structured JSON)</li>
+        <li>Twilio WhatsApp sender</li>
+        <li>Resend email sender</li>
+        <li>WebSocket server (Socket.io)</li>
+        <li>Cron: task scheduler + PDF report</li>
+        <li>Audit log writer</li>
+      </ul>
+    </div>
+    <div class="arch-col">
+      <div class="arch-col-header ah-teal">Parent App (Next.js PWA)</div>
+      <ul>
+        <li>Today's tasks view</li>
+        <li>Photo upload (compressed)</li>
+        <li>WhatsApp deep-link entry</li>
+        <li>Voice note playback</li>
+        <li>Streak display</li>
+        <li>Nutrition card per meal</li>
+        <li>Channel preference settings</li>
+      </ul>
+    </div>
+  </div>
+  <div class="highlight-box" style="margin-top:28px;">
+    <strong>Key design decision:</strong> Photo verification is <em>async</em>. Parent submits → job queued in BullMQ → Claude processes in background → WebSocket pushes result to kid. Parent is never blocked waiting for AI. Retry logic (3× exponential backoff) handles Claude API failures silently.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 8 — DB SCHEMA                               -->
+<!-- ══════════════════════════════════════════════════ -->
+<section class="slide" id="schema">
+  <div class="slide-header">
+    <h1>Database Schema</h1>
+    <div class="underline u-purple"></div>
+  </div>
+  <div class="schema-grid">
+    <div class="schema-card">
+      <h4>users</h4>
+      <ul>
+        <li><span>id</span> uuid PK</li>
+        <li><span>role</span> kid | parent</li>
+        <li>name, phone, email</li>
+        <li>whatsapp_number</li>
+        <li>alert_preference</li>
+      </ul>
+    </div>
+    <div class="schema-card">
+      <h4>families</h4>
+      <ul>
+        <li><span>id</span> uuid PK</li>
+        <li><span>kid_id</span> → users</li>
+        <li><span>parent_id</span> → users</li>
+        <li>invite_code unique</li>
+        <li>linked_at timestamp</li>
+      </ul>
+    </div>
+    <div class="schema-card">
+      <h4>tasks</h4>
+      <ul>
+        <li><span>id</span> uuid PK</li>
+        <li><span>kid_id</span> → users</li>
+        <li>title, type, template</li>
+        <li>schedule, recurrence</li>
+        <li>proof_type, note</li>
+        <li>voice_note_url, streak_goal</li>
+      </ul>
+    </div>
+    <div class="schema-card">
+      <h4>task_instances</h4>
+      <ul>
+        <li><span>id</span> uuid PK</li>
+        <li><span>task_id</span> → tasks</li>
+        <li><span>parent_id</span> → users</li>
+        <li>due_at timestamp</li>
+        <li>status pending|submitted<br/>|passed|flagged|failed|skipped</li>
+      </ul>
+    </div>
+    <div class="schema-card">
+      <h4>submissions</h4>
+      <ul>
+        <li><span>id</span> uuid PK</li>
+        <li><span>task_instance_id</span> FK</li>
+        <li>photo_url (Storage)</li>
+        <li>submitted_at timestamp</li>
+      </ul>
+    </div>
+    <div class="schema-card">
+      <h4>ai_results</h4>
+      <ul>
+        <li><span>id</span> uuid PK</li>
+        <li><span>submission_id</span> FK</li>
+        <li>result, confidence</li>
+        <li>reason text</li>
+        <li>nutrition_json jsonb</li>
+        <li>medication_json jsonb</li>
+      </ul>
+    </div>
+    <div class="schema-card">
+      <h4>streaks</h4>
+      <ul>
+        <li><span>task_id, parent_id</span> PK</li>
+        <li>current_streak int</li>
+        <li>longest_streak int</li>
+        <li>freeze_used_this_week bool</li>
+      </ul>
+    </div>
+    <div class="schema-card">
+      <h4>notifications</h4>
+      <ul>
+        <li><span>id</span> uuid PK</li>
+        <li><span>user_id</span> → users</li>
+        <li>channel whatsapp|email|ws</li>
+        <li>sent_at, status</li>
+      </ul>
+    </div>
+    <div class="schema-card">
+      <h4>audit_log</h4>
+      <ul>
+        <li><span>id</span> uuid PK</li>
+        <li><span>submission_id</span> FK</li>
+        <li>claude_prompt text</li>
+        <li>claude_response jsonb</li>
+        <li>created_at timestamp</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 9 — TECH STACK                              -->
+<!-- ══════════════════════════════════════════════════ -->
+<section class="slide" id="stack">
+  <div class="slide-header">
+    <h1>Tech Stack</h1>
+    <div class="underline u-gold"></div>
+  </div>
+  <table class="stack-table">
+    <thead>
+      <tr><th>Layer</th><th>Technology</th><th>Why</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Frontend + API</td><td>Next.js 14 (App Router)</td><td>SSR + API routes in one repo, zero separate backend service needed</td></tr>
+      <tr><td>Styling</td><td>Tailwind CSS + shadcn/ui</td><td>Fast, accessible, consistent — no custom CSS system needed</td></tr>
+      <tr><td>Auth</td><td>Supabase Auth</td><td>JWT, magic link, role claims, Row Level Security built-in</td></tr>
+      <tr><td>Database</td><td>Supabase (PostgreSQL)</td><td>Free tier, real-time subscriptions, RLS for multi-tenant safety</td></tr>
+      <tr><td>File Storage</td><td>Supabase Storage</td><td>Direct upload from browser, CDN-backed, signed URLs</td></tr>
+      <tr><td>Job Queue</td><td>BullMQ + Redis (Upstash)</td><td>Async photo processing, retry with backoff, back-pressure</td></tr>
+      <tr><td>AI / Vision</td><td>Claude claude-sonnet-4-6</td><td>Best multimodal model, reliable structured JSON output</td></tr>
+      <tr><td>WhatsApp</td><td>Twilio WhatsApp API</td><td>10-min sandbox setup, deep-link messages, free trial tier</td></tr>
+      <tr><td>Email</td><td>Resend</td><td>Dead simple SDK, 3k free/month, great deliverability</td></tr>
+      <tr><td>Real-time</td><td>Socket.io or Supabase Realtime</td><td>Instant result push to kid without polling</td></tr>
+      <tr><td>PDF Reports</td><td>Puppeteer or pdfkit</td><td>Weekly report generation via scheduled BullMQ job</td></tr>
+      <tr><td>Image Compression</td><td>browser-image-compression</td><td>Client-side, target 500KB before upload — no heavy server load</td></tr>
+      <tr><td>Logging + Errors</td><td>Sentry + structured JSON</td><td>Error tracking, observability, alert on Claude API failures</td></tr>
+      <tr><td>Deployment</td><td>Vercel + Railway (Redis)</td><td>Zero-config, free tiers, scalable when needed</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 10 — ROADMAP                                -->
+<!-- ══════════════════════════════════════════════════ -->
+<section class="slide" id="roadmap">
+  <div class="slide-header">
+    <h1>Build Roadmap</h1>
+    <div class="underline u-teal"></div>
+  </div>
+  <div class="roadmap-grid">
+    <div class="phase-card">
+      <div class="phase-header">
+        <div class="phase-num pn-purple">01</div>
+        <div><h3>MVP</h3><span>Weeks 1 – 4</span></div>
+      </div>
+      <div class="phase-items">
+        <div class="check-item"><span class="check-icon ci-purple">✔</span> Supabase setup: schema, auth, storage</div>
+        <div class="check-item"><span class="check-icon ci-purple">✔</span> Two-role auth + family linking (invite code)</div>
+        <div class="check-item"><span class="check-icon ci-purple">✔</span> Task creation UI with templates</div>
+        <div class="check-item"><span class="check-icon ci-purple">✔</span> Task instance scheduler (Vercel cron)</div>
+        <div class="check-item"><span class="check-icon ci-purple">✔</span> Parent app: task view + photo upload</div>
+        <div class="check-item"><span class="check-icon ci-purple">✔</span> Client-side image compression</div>
+        <div class="check-item"><span class="check-icon ci-purple">✔</span> BullMQ + Redis setup</div>
+        <div class="check-item"><span class="check-icon ci-purple">✔</span> Claude Vision: pass / flag / fail + reason</div>
+        <div class="check-item"><span class="check-icon ci-purple">✔</span> WhatsApp reminder (Twilio sandbox)</div>
+        <div class="check-item"><span class="check-icon ci-purple">✔</span> Audit log saved on every AI decision</div>
+      </div>
+    </div>
+    <div class="phase-card">
+      <div class="phase-header">
+        <div class="phase-num pn-teal">02</div>
+        <div><h3>Depth</h3><span>Weeks 5 – 8</span></div>
+      </div>
+      <div class="phase-items">
+        <div class="check-item"><span class="check-icon ci-teal">✔</span> Nutrition checker output on meal tasks</div>
+        <div class="check-item"><span class="check-icon ci-teal">✔</span> Medication bottle label check</div>
+        <div class="check-item"><span class="check-icon ci-teal">✔</span> Confidence score shown to kid</div>
+        <div class="check-item"><span class="check-icon ci-teal">✔</span> Streak system with freeze mechanic</div>
+        <div class="check-item"><span class="check-icon ci-teal">✔</span> Kid dashboard with completion graphs</div>
+        <div class="check-item"><span class="check-icon ci-teal">✔</span> WebSocket real-time result push</div>
+        <div class="check-item"><span class="check-icon ci-teal">✔</span> Email alerts via Resend + parent preference</div>
+        <div class="check-item"><span class="check-icon ci-teal">✔</span> Manual review panel (AI override)</div>
+        <div class="check-item"><span class="check-icon ci-teal">✔</span> Redis rate limiting (per-user)</div>
+        <div class="check-item"><span class="check-icon ci-teal">✔</span> Voice note recording + playback</div>
+        <div class="check-item"><span class="check-icon ci-teal">✔</span> Sentry + structured logging</div>
+      </div>
+    </div>
+    <div class="phase-card">
+      <div class="phase-header">
+        <div class="phase-num pn-gold">03</div>
+        <div><h3>Scale</h3><span>Weeks 9 – 12</span></div>
+      </div>
+      <div class="phase-items">
+        <div class="check-item"><span class="check-icon ci-gold">✔</span> Weekly PDF report auto-generated + emailed</div>
+        <div class="check-item"><span class="check-icon ci-gold">✔</span> Nutrition trend graph (weekly view)</div>
+        <div class="check-item"><span class="check-icon ci-gold">✔</span> AI-suggested tasks</div>
+        <div class="check-item"><span class="check-icon ci-gold">✔</span> Health trend graphs (long-term)</div>
+        <div class="check-item"><span class="check-icon ci-gold">✔</span> Streak milestone badges</div>
+        <div class="check-item"><span class="check-icon ci-gold">✔</span> Multi-parent support</div>
+        <div class="check-item"><span class="check-icon ci-gold">✔</span> Onboard 15+ real families</div>
+        <div class="check-item"><span class="check-icon ci-gold">✔</span> Deploy: Vercel + Supabase prod</div>
+        <div class="check-item"><span class="check-icon ci-gold">✔</span> (Stretch) Mobile app via Capacitor</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 11 — RECRUITER VALUE                       -->
+<!-- ══════════════════════════════════════════════════ -->
+<section class="slide" id="recruiter">
+  <div class="slide-header">
+    <h1>Why This Impresses Recruiters</h1>
+    <div class="underline u-purple"></div>
+  </div>
+  <div style="display:flex; flex-direction:column; gap:16px;">
+    <div class="rec-item rl-gold">
+      <div class="rec-icon">⚡</div>
+      <div>
+        <h3>Real backend engineering</h3>
+        <p>Async job queues, Redis, WebSockets, rate limiting — these signal production-level thinking, not a tutorial project. Every choice has a reason you can defend.</p>
+      </div>
+    </div>
+    <div class="rec-item rl-teal">
+      <div class="rec-icon">🧠</div>
+      <div>
+        <h3>Non-trivial AI integration</h3>
+        <p>AI isn't decoration here — it's load-bearing. Structured JSON output, confidence scoring, nutrition parsing, medication label reading, audit logging, and manual override show depth.</p>
+      </div>
+    </div>
+    <div class="rec-item rl-purple">
+      <div class="rec-icon">👥</div>
+      <div>
+        <h3>Real users, real numbers</h3>
+        <p>Deploy it. Get 15+ families using it. "200 task verifications/month" beats "personal project" on any resume. Usage data is a conversation starter, not just a bullet point.</p>
+      </div>
+    </div>
+    <div class="rec-item rl-red">
+      <div class="rec-icon">📊</div>
+      <div>
+        <h3>5 interview stories built-in</h3>
+        <p>Job queue design · WebSocket architecture · Rate limiting · AI prompt engineering · DB schema design — each is a 20-min technical conversation. You don't need to prepare stories — the project IS the story.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SLIDE 12 — NEXT STEPS                             -->
+<!-- ══════════════════════════════════════════════════ -->
+<section class="slide" id="nextsteps">
+  <div class="slide-header">
+    <h1>Start Building Today</h1>
+    <div class="underline u-teal"></div>
+  </div>
+  <div class="steps-list">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div>
+        <h4>Scaffold the project</h4>
+        <p>Run <code>npx create-next-app@latest parentcare --typescript --tailwind --app</code> and push to GitHub</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div>
+        <h4>Set up Supabase</h4>
+        <p>Create project, run the 9-table schema SQL, configure Row Level Security, set up Storage bucket for photos</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div>
+        <h4>Get your API keys</h4>
+        <p>Claude API key from console.anthropic.com · Twilio WhatsApp sandbox (10 mins) · Resend account · Upstash Redis</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">4</div>
+      <div>
+        <h4>Build auth + family linking first</h4>
+        <p>Two-role auth (kid / parent), invite code flow. Everything in the app depends on this — do it right first.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">5</div>
+      <div>
+        <h4>Build the core loop</h4>
+        <p>Task creation → photo upload → Claude verification → result shown to kid. This is the product. Everything else is polish.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
