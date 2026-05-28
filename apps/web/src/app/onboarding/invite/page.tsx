@@ -34,7 +34,7 @@ export default function InviteOnboardingPage() {
       return
     }
 
-    router.push('/parent/dashboard')
+    router.push('/onboarding/chat')
   }
 
   return (
