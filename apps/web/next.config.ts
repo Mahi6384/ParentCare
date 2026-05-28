@@ -2,7 +2,9 @@ import type { NextConfig } from "next";
 import withPWA from "@ducanh2912/next-pwa";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Empty turbopack config silences the "webpack config but no turbopack config" warning.
+  // next-pwa uses webpack internally — it still works in dev since SW is disabled there.
+  turbopack: {},
 };
 
 export default withPWA({
