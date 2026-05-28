@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import SaathiMark from '@/components/ui/SaathiMark'
+import KidNavBar from '@/components/kid/KidNavBar'
 
 /*
   Kid Dashboard — Overview artboard (artboard #02 in the design).
@@ -210,108 +211,8 @@ export default async function KidDashboard() {
       className="flex flex-col"
       style={{ minHeight: '100vh', background: 'var(--pc-bg)', color: 'var(--pc-ink)', fontFamily: 'var(--pc-body)' }}
     >
-      {/* ── Top navigation bar ── */}
-      <div
-        style={{
-          height: 60, display: 'flex', alignItems: 'center', gap: 28,
-          padding: '0 28px', borderBottom: '0.5px solid var(--pc-hair)',
-          background: 'var(--pc-bg)', position: 'sticky', top: 0, zIndex: 10,
-        }}
-      >
-        {/* Logo + wordmark */}
-        <div
-          style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            paddingRight: 24, borderRight: '0.5px solid var(--pc-hair)', height: '100%',
-          }}
-        >
-          <SaathiMark size={26} />
-          <div style={{ lineHeight: 1.1 }}>
-            <div className="font-serif font-medium text-[18px] text-ink" style={{ letterSpacing: '-0.01em' }}>
-              ParentCare
-            </div>
-            <div className="font-mono text-[10.5px] text-ink-3 tracking-[0.04em] uppercase">
-              for {profile?.name}
-            </div>
-          </div>
-        </div>
-
-        {/* Nav items */}
-        <div style={{ display: 'flex', gap: 4 }}>
-          {[
-            ['overview', 'Overview', true, null],
-            ['tasks',    'Tasks',    false, null],
-            ['concerns', 'Concerns', false, 2],
-            ['report',   'Weekly Report', false, null],
-            ['family',   'Family',   false, null],
-          ].map(([id, label, active, badge]) => (
-            <button
-              key={id as string}
-              style={{
-                appearance: 'none', border: 0, cursor: 'pointer',
-                background: active ? 'var(--pc-surface)' : 'transparent',
-                color:      active ? 'var(--pc-ink)' : 'var(--pc-ink2)',
-                fontFamily: 'var(--pc-body)',
-                fontSize: 13.5,
-                fontWeight: active ? 600 : 500,
-                padding: '8px 12px', borderRadius: 8,
-                display: 'flex', alignItems: 'center', gap: 7,
-                boxShadow: active ? '0 0 0 0.5px var(--pc-hair)' : 'none',
-              }}
-            >
-              {label}
-              {badge && (
-                <span
-                  style={{
-                    fontSize: 10, fontWeight: 600, padding: '1px 5px',
-                    borderRadius: 999, background: 'var(--pc-bad)',
-                    color: '#fff', lineHeight: 1.4,
-                  }}
-                >
-                  {badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ flex: 1 }} />
-
-        {/* Search */}
-        <div
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px 6px 10px',
-            background: 'var(--pc-surface)', border: '0.5px solid var(--pc-hair)',
-            borderRadius: 999, fontSize: 12.5, color: 'var(--pc-ink3)', minWidth: 220,
-          }}
-        >
-          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="var(--pc-ink3)" strokeWidth={1.5} strokeLinecap="round">
-            <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
-          </svg>
-          <span>Search tasks, days, photos…</span>
-          <span
-            style={{
-              marginLeft: 'auto', fontFamily: 'var(--pc-mono)', fontSize: 10.5,
-              padding: '1px 5px', border: '0.5px solid var(--pc-hair)',
-              borderRadius: 4, color: 'var(--pc-ink3)',
-            }}
-          >
-            ⌘K
-          </span>
-        </div>
-
-        {/* User avatar */}
-        <div
-          style={{
-            width: 30, height: 30, borderRadius: '50%',
-            background: 'var(--pc-surface2)', border: '0.5px solid var(--pc-hair)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--pc-display)', fontSize: 14, fontWeight: 600, color: 'var(--pc-ink)',
-          }}
-        >
-          {profile?.name?.[0]?.toUpperCase() ?? 'U'}
-        </div>
-      </div>
+      {/* ── Top navigation bar — extracted to KidNavBar component ── */}
+      <KidNavBar userName={profile?.name ?? ''} activeTab="overview" />
 
       {/* ── Body — two-column grid ── */}
       <div
