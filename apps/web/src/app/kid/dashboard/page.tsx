@@ -200,7 +200,7 @@ export default async function KidDashboard() {
       .order('due_at', { ascending: true })
 
     feed = (instances ?? []).map(inst => {
-      const title = (inst.tasks as { title: string } | null)?.title ?? 'Unknown task'
+      const title = (inst.tasks as unknown as { title: string } | null)?.title ?? 'Unknown task'
       const due   = new Date(inst.due_at)
       const time  = due.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
       return {

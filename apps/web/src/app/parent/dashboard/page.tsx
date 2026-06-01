@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import SaathiMark from '@/components/ui/SaathiMark'
 
@@ -37,17 +38,67 @@ export default async function ParentDashboard() {
   const months   = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
   const dayStr   = `${dayNames[today.getDay()]} · ${today.getDate()} ${months[today.getMonth()]}`
 
-  // ── Placeholder task data ────────────────────────────────
-  // TODO: replace with real task_instances query for today:
-  //   SELECT ti.*, t.title, t.icon_type
-  //   FROM task_instances ti JOIN tasks t ON ti.task_id = t.id
-  //   WHERE ti.parent_id = user.id AND ti.due_at::date = today
-  const tasks = [
-    { id: 't1', title: 'Morning walk',    sub: '7:30 AM · Lodhi Garden',       icon: '🚶', done: true,  note: '32 min'  },
-    { id: 't2', title: 'BP medicine',     sub: 'Telma 40 · after breakfast',   icon: '💊', done: true,  note: '10:02 AM' },
-    { id: 't3', title: 'Lunch with dal',  sub: 'photo verification',           icon: '🍽️', done: false, due: '1:30 PM'  },
-    { id: 't4', title: 'Evening walk',    sub: 'before sunset',                icon: '🚶', done: false, due: '5:30 PM'  },
-  ]
+  // ── Today's task instances from Supabase ─────────────────
+  // "Today" = UTC midnight-to-midnight window. Due_at values are stored
+  // in UTC after timezone conversion, so this range captures all instances
+  // created for today regardless of the parent's local timezone.
+  const todayStart = new Date()
+  todayStart.setUTCHours(0, 0, 0, 0)
+  const tomorrowStart = new Date(todayStart)
+  tomorrowStart.setUTCDate(tomorrowStart.getUTCDate() + 1)
+
+  // Join task_instances → tasks in a single query using PostgREST nested select.
+  // The `tasks (...)` syntax tells Supabase to follow the FK and embed the
+  // related task row inline — no separate query needed.
+  const { data: instances } = await supabase
+    .from('task_instances')
+    .select(`
+      id,
+      status,
+      due_at,
+      tasks (
+        title,
+        type
+      )
+    `)
+    .eq('parent_id', user!.id)
+    .gte('due_at', todayStart.toISOString())
+    .lt('due_at', tomorrowStart.toISOString())
+    .order('due_at', { ascending: true })
+
+  // Highest active streak across all this parent's tasks — shown in the pill.
+  const { data: streakRows } = await supabase
+    .from('streaks')
+    .select('current_streak')
+    .eq('parent_id', user!.id)
+    .order('current_streak', { ascending: false })
+    .limit(1)
+
+  const topStreak = streakRows?.[0]?.current_streak ?? 0
+
+  const taskTypeIcons: Record<string, string> = {
+    walk: '🚶', diet: '🍽️', medicine: '💊',
+    sleep: '😴', exercise: '💪', custom: '✅',
+  }
+
+  // Map DB rows → the shape the existing UI already expects.
+  // "done" = any terminal status; only pending/in_progress are still actionable.
+  const tasks = (instances ?? []).map(instance => {
+    const task = instance.tasks as unknown as { title: string; type: string }
+    const dueTime = new Date(instance.due_at).toLocaleTimeString('en-IN', {
+      hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
+    })
+    const done = !['pending', 'in_progress'].includes(instance.status)
+    return {
+      id:   instance.id,
+      title: task.title,
+      sub:  done ? instance.status : `${dueTime} · photo verification`,
+      icon: taskTypeIcons[task.type] ?? '✅',
+      done,
+      note: done ? instance.status : undefined,
+      due:  done ? undefined : dueTime,
+    }
+  })
 
   const completed = tasks.filter(t => t.done).length
   const nextTask  = tasks.find(t => !t.done)
@@ -81,9 +132,8 @@ export default async function ParentDashboard() {
               }}
             >
               🔥{' '}
-              <b style={{ color: 'var(--pc-ink)', fontWeight: 700 }}>22</b>
+              <b style={{ color: 'var(--pc-ink)', fontWeight: 700 }}>{topStreak}</b>
               {' '}din
-              {/* TODO: real streak from streaks table */}
             </div>
           </div>
 
@@ -157,19 +207,21 @@ export default async function ParentDashboard() {
                 {nextTask.sub} — Saathi aapko guide karega.
               </div>
 
-              {/* CTA button */}
-              <button
+              {/* CTA button — navigates to photo submission for this task */}
+              <Link
+                href={`/parent/submit/${nextTask.id}`}
                 style={{
-                  marginTop: 18, appearance: 'none', border: 0,
+                  marginTop: 18,
                   background: 'var(--pc-surface)', color: 'var(--pc-brand-deep)',
                   fontFamily: 'var(--pc-body)', fontSize: 18, fontWeight: 700,
                   padding: '14px 22px', borderRadius: 14,
                   display: 'inline-flex', alignItems: 'center', gap: 10,
                   boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  textDecoration: 'none',
                 }}
               >
                 ▶ Shuru karein
-              </button>
+              </Link>
             </div>
           </div>
         )}
