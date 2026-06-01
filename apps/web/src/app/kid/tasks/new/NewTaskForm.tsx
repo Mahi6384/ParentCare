@@ -36,8 +36,10 @@ interface FormState {
 }
 
 interface NewTaskFormProps {
-  familyId:      string | undefined
-  healthProfile: HealthProfile | null
+  familyId:       string | undefined
+  healthProfile:  HealthProfile | null
+  parentId:       string | null
+  parentTimezone: string
 }
 
 // ── Template configuration ────────────────────────────────────
@@ -127,9 +129,37 @@ const TEMPLATE_DEFAULTS: Record<TemplateKey, {
   },
 }
 
+// ── Helpers ───────────────────────────────────────────────────
+
+// Converts a bare time string ("07:30") + IANA timezone into a UTC ISO string.
+// Steps: get today's date in that timezone → glue with time → read the UTC offset
+// for that timezone right now → build a full ISO string → let Date parse it to UTC.
+function buildDueAt(scheduleTime: string | null, timezone: string): string {
+  const time = scheduleTime || '00:00'
+
+  // Step 1: today's calendar date in the parent's timezone, e.g. "2026-05-29"
+  const todayInTz = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+  }).format(new Date())
+
+  // Step 2: the UTC offset for this timezone right now, e.g. "GMT+5:30" → "+05:30"
+  const rawOffset = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    timeZoneName: 'shortOffset',
+  })
+    .formatToParts(new Date())
+    .find(p => p.type === 'timeZoneName')!
+    .value                                    // "GMT+5:30"
+    .replace('GMT', '')                       // "+5:30"
+    .replace(/^([+-])(\d):/, '$10$2:')        // "+05:30"  (pad single-digit hours)
+
+  // Step 3: build "2026-05-29T07:30:00+05:30" — JS Date parses this correctly to UTC
+  return new Date(`${todayInTz}T${time}:00${rawOffset}`).toISOString()
+}
+
 // ── Component ─────────────────────────────────────────────────
 
-export default function NewTaskForm({ familyId, healthProfile }: NewTaskFormProps) {
+export default function NewTaskForm({ familyId, healthProfile, parentId, parentTimezone }: NewTaskFormProps) {
   const router = useRouter()
 
   const [form, setForm] = useState<FormState>({
@@ -188,24 +218,46 @@ export default function NewTaskForm({ familyId, healthProfile }: NewTaskFormProp
       return
     }
 
-    const { error: insertError } = await supabase.from('tasks').insert({
-      kid_id:          user.id,
-      family_id:       familyId,
-      title:           form.title.trim(),
-      type:            form.selectedTemplate,
-      proof_type:      form.proofType,
-      recurrence:      form.recurrence,
-      schedule_time:   form.scheduleTime || null,  // empty string → null
-      note:            null,
-      voice_note_url:  null,  // TODO: Supabase Storage upload (Phase 2)
-      streak_goal:     7,
-      is_active:       true,
-    })
+    // .select().single() tells Supabase to return the inserted row so we get the new task's id
+    const { data: newTask, error: insertError } = await supabase
+      .from('tasks')
+      .insert({
+        kid_id:          user.id,
+        family_id:       familyId,
+        title:           form.title.trim(),
+        type:            form.selectedTemplate,
+        proof_type:      form.proofType,
+        recurrence:      form.recurrence,
+        schedule_time:   form.scheduleTime || null,
+        note:            null,
+        voice_note_url:  null,
+        streak_goal:     7,
+        is_active:       true,
+      })
+      .select()
+      .single()
 
     if (insertError) {
       setError(insertError.message)
       setSubmitting(false)
       return
+    }
+
+    // Only create today's instance if a parent is connected — no parent means no one to assign it to
+    if (parentId) {
+      const { error: instanceError } = await supabase.from('task_instances').insert({
+        task_id:   newTask.id,
+        parent_id: parentId,
+        family_id: familyId,
+        due_at:    buildDueAt(form.scheduleTime || null, parentTimezone),
+        status:    'pending',
+      })
+
+      if (instanceError) {
+        setError(instanceError.message)
+        setSubmitting(false)
+        return
+      }
     }
 
     router.push('/kid/dashboard')
