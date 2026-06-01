@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import SaathiMark from '@/components/ui/SaathiMark'
 import KidNavBar from '@/components/kid/KidNavBar'
@@ -158,46 +159,58 @@ export default async function KidDashboard() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('name')
-    .eq('id', user!.id)
-    .single()
+  const [{ data: profile }, { data: family }] = await Promise.all([
+    supabase.from('users').select('name').eq('id', user!.id).single(),
+    supabase.from('families').select('invite_code, parent_id').eq('kid_id', user!.id).single(),
+  ])
 
-  const { data: family } = await supabase
-    .from('families')
-    .select('invite_code, parent_id')
-    .eq('kid_id', user!.id)
-    .single()
+  // ── Real feed: today's task_instances for the linked parent ────
+  const toneMap: Record<string, FeedTone> = {
+    pending:     'pending',
+    in_progress: 'pending',
+    submitted:   'pending',
+    passed:      'ok',
+    flagged:     'warn',
+    failed:      'bad',
+    skipped:     'bad',
+  }
 
-  // ── Placeholder feed data ────────────────────────────────
-  // These will be replaced by real task_instances + ai_results
-  // queries once the task system is built (Step 5 of the roadmap).
-  const feed: FeedItem[] = [
-    {
-      time: '8:14 AM', task: 'Morning Walk',
-      tone: 'ok', streak: 6,
-      reason: 'Photo shows Papa walking outdoors in Lodhi Garden, full upright posture, daylight. Sixth consecutive completion — exercise schedule is firmly habitual now.',
-      confidence: 0.91,
-    },
-    {
-      time: '10:02 AM', task: 'Morning Medicine — Telma 40',
-      tone: 'ok', streak: 22,
-      reason: 'Medication label reads "Telma 40" — matches prescription. Blister has one tablet popped. Logged.',
-      confidence: 0.96,
-    },
-    {
-      time: '1:30 PM', task: 'Lunch — Dal, Roti, Sabzi',
-      tone: 'warn', streak: 0,
-      reason: 'Plate shows 2 rotis, sabzi, and rice — no dal visible despite plan. Protein gap continues (9th low-protein day in two weeks).',
-      confidence: 0.84,
-    },
-    {
-      time: '5:40 PM', task: 'Evening Walk',
-      tone: 'pending',
-      reason: 'Due now. Push alert sent at 5:30. Will follow up via WhatsApp voice in 20 min if no submission.',
-    },
-  ]
+  const reasonMap: Record<string, string> = {
+    pending:     'Scheduled for today. Saathi will send a reminder at the due time.',
+    in_progress: 'Parent has opened this task.',
+    submitted:   'Photo submitted. Waiting for Saathi to verify.',
+    passed:      'Saathi verified this task as complete.',
+    flagged:     'Saathi flagged this submission — review the photo.',
+    failed:      'Task was not completed today.',
+    skipped:     'Task was skipped.',
+  }
+
+  let feed: FeedItem[] = []
+  if (family?.parent_id) {
+    const now = new Date()
+    const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+    const endOfDay   = new Date(startOfDay.getTime() + 86_400_000)
+
+    const { data: instances } = await supabase
+      .from('task_instances')
+      .select('id, status, due_at, tasks(title)')
+      .eq('parent_id', family.parent_id)
+      .gte('due_at', startOfDay.toISOString())
+      .lt('due_at', endOfDay.toISOString())
+      .order('due_at', { ascending: true })
+
+    feed = (instances ?? []).map(inst => {
+      const title = (inst.tasks as { title: string } | null)?.title ?? 'Unknown task'
+      const due   = new Date(inst.due_at)
+      const time  = due.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      return {
+        time,
+        task:   title,
+        tone:   (toneMap[inst.status] ?? 'pending') as FeedTone,
+        reason: reasonMap[inst.status] ?? '',
+      }
+    })
+  }
 
   // 7-day completion data — [Mon … Sun], value = completed / total
   // TODO: replace with real task_instance query grouped by day
@@ -265,7 +278,7 @@ export default async function KidDashboard() {
               </div>
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 <span className="pc-pill pc-pill-neutral">🔕 Quiet mode</span>
-                <span className="pc-pill pc-pill-brand cursor-pointer">＋ New task</span>
+                <Link href="/kid/tasks/new" className="pc-pill pc-pill-brand" style={{ textDecoration: 'none' }}>＋ New task</Link>
               </div>
             </div>
 
@@ -337,7 +350,25 @@ export default async function KidDashboard() {
               </div>
             </div>
 
-            {feed.map((item, i) => <FeedCard key={i} item={item} />)}
+            {feed.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center', padding: '48px 0',
+                  color: 'var(--pc-ink3)', fontSize: 14,
+                }}
+              >
+                <div style={{ fontSize: 32, marginBottom: 12 }}>📋</div>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>No tasks scheduled for today.</div>
+                <Link
+                  href="/kid/tasks/new"
+                  style={{ color: 'var(--pc-brand)', textDecoration: 'none', fontWeight: 500 }}
+                >
+                  Create your first task →
+                </Link>
+              </div>
+            ) : (
+              feed.map((item, i) => <FeedCard key={i} item={item} />)
+            )}
           </div>
         </div>
 

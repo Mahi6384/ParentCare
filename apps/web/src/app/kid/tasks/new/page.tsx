@@ -305,46 +305,32 @@ export default async function NewTaskPage() {
         data: { user },
     } = await supabase.auth.getUser();
 
-    // Kid's name for the nav bar
-    const { data: profile } = await supabase
-        .from("users")
-        .select("name")
-        .eq("id", user!.id)
-        .single();
+    // Round 1 — two independent queries, run in parallel
+    const [{ data: profile }, { data: family }] = await Promise.all([
+        supabase.from("users").select("name").eq("id", user!.id).single(),
+        supabase.from("families").select("id, parent_id").eq("kid_id", user!.id).single(),
+    ]);
 
-    // Family → gives us family_id (for task insert) and parent_id (for health profile)
-    const { data: family } = await supabase
-        .from("families")
-        .select("id, parent_id")
-        .eq("kid_id", user!.id)
-        .single();
+    const parentId = family?.parent_id ?? null;
 
-    // Parent's health profile — null if parent hasn't completed onboarding
-    const { data: healthProfile } = family?.parent_id
-        ? await supabase
-              .from("health_profiles")
-              .select("*")
-              .eq("parent_id", family.parent_id)
-              .single()
-        : { data: null };
-
-    const { data: parentUser } = family?.parent_id
-        ? await supabase
-              .from("users")
-              .select("timezone")
-              .eq("id", family.parent_id)
-              .single()
-        : { data: null };
-
-    // Last 3 agent notes for the sidebar
-    const { data: agentNotes } = family?.parent_id
-        ? await supabase
-              .from("agent_notes")
-              .select("id, note, created_at")
-              .eq("parent_id", family.parent_id)
-              .order("created_at", { ascending: false })
-              .limit(3)
-        : { data: [] };
+    // Round 2 — three independent queries that all need parentId, run in parallel
+    const [{ data: healthProfile }, { data: parentUser }, { data: agentNotes }] =
+        await Promise.all([
+            parentId
+                ? supabase.from("health_profiles").select("*").eq("parent_id", parentId).single()
+                : Promise.resolve({ data: null }),
+            parentId
+                ? supabase.from("users").select("timezone").eq("id", parentId).single()
+                : Promise.resolve({ data: null }),
+            parentId
+                ? supabase
+                      .from("agent_notes")
+                      .select("id, note, created_at")
+                      .eq("parent_id", parentId)
+                      .order("created_at", { ascending: false })
+                      .limit(3)
+                : Promise.resolve({ data: [] }),
+        ]);
 
     return (
         <div
@@ -370,7 +356,7 @@ export default async function NewTaskPage() {
                 <NewTaskForm
                     familyId={family?.id}
                     healthProfile={healthProfile as HealthProfile | null}
-                    parentId={family?.parent_id ?? null}
+                    parentId={parentId}
                     parentTimezone={parentUser?.timezone ?? "Asia/Kolkata"}
                 />
 
