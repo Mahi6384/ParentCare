@@ -258,6 +258,16 @@ export default function NewTaskForm({ familyId, healthProfile, parentId, parentT
         setSubmitting(false)
         return
       }
+
+      // Initialize streak row for this task — non-critical, don't block navigation on failure.
+      // The nightly Edge Function and AI verifier will increment current_streak on each
+      // verified completion. Without this row existing, those increments have no target.
+      await supabase.from('streaks').insert({
+        task_id:        newTask.id,
+        parent_id:      parentId,
+        current_streak: 0,
+        longest_streak: 0,
+      })
     }
 
     router.push('/kid/dashboard')
