@@ -436,3 +436,45 @@ $$;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- ============================================================
+-- ADDENDUM: policies added after initial migration
+-- ============================================================
+
+-- task_instances: kid INSERT (added Day 11)
+-- Kids need to INSERT task_instances when the Edge Function is not used
+-- (e.g. local dev). Separate policy because FOR SELECT != FOR INSERT in RLS.
+create policy "task_instances: kid inserts" on public.task_instances
+  for insert with check (
+    exists (
+      select 1 from public.families f
+      where f.id = task_instances.family_id and f.kid_id = auth.uid()
+    )
+  );
+
+-- ============================================================
+-- STORAGE: photos bucket + policies (added Day 13)
+-- Run these separately if the bucket doesn't exist yet:
+--
+--   INSERT INTO storage.buckets (id, name, public)
+--   VALUES ('photos', 'photos', false)
+--   ON CONFLICT (id) DO NOTHING;
+-- ============================================================
+
+-- Storage path structure: photos/<parentId>/<instanceId>.jpg
+-- The parentId as the first path segment is enforced by RLS below.
+-- storage.foldername(name) returns text[] — index [1] is the first segment.
+
+create policy "photos: parent upload"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'photos'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+create policy "photos: parent read"
+  on storage.objects for select
+  using (
+    bucket_id = 'photos'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
