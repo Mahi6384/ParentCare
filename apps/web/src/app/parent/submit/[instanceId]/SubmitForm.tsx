@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import PhotoUpload from '@/components/parent/PhotoUpload'
 
@@ -25,13 +26,13 @@ interface Props {
   parentId: string
 }
 
-type FormState = 'idle' | 'uploading' | 'done' | 'error'
+type FormState = 'idle' | 'uploading' | 'error'
 
 export default function SubmitForm({ instanceId, parentId }: Props) {
+  const router = useRouter()
   const [file, setFile]           = useState<File | null>(null)
   const [formState, setFormState] = useState<FormState>('idle')
   const [errMsg, setErrMsg]       = useState<string | null>(null)
-  const [storagePath, setStoragePath] = useState<string | null>(null)
 
   // Called by PhotoUpload once compression is done
   function handleFileReady(compressed: File) {
@@ -44,65 +45,40 @@ export default function SubmitForm({ instanceId, parentId }: Props) {
     setFormState('uploading')
     setErrMsg(null)
 
+    // ── Step 1: Upload to Supabase Storage ────────────────────
     const supabase = createClient()
-    // Path: <parentId>/<instanceId>.jpg
-    // The parentId folder segment is what the Storage RLS policy uses to
-    // confirm auth.uid() matches — no other parent can write here.
     const path = `${parentId}/${instanceId}.jpg`
 
-    const { error } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('photos')
       .upload(path, file, {
         contentType: 'image/jpeg',
-        upsert: true, // allow re-submission if parent retakes the photo
+        upsert: true,
       })
 
-    if (error) {
-      setErrMsg(`Upload failed: ${error.message}`)
+    if (uploadError) {
+      setErrMsg(`Upload failed: ${uploadError.message}`)
       setFormState('error')
       return
     }
 
-    // Step 4 will POST /api/submissions/create with this path,
-    // insert a submissions row, and update task_instance.status = 'submitted'
-    setStoragePath(path)
-    setFormState('done')
-  }
+    // ── Step 2: Record submission + update task status ────────
+    const res = await fetch('/api/submissions/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instanceId, storagePath: path }),
+    })
 
-  if (formState === 'done') {
-    return (
-      <div
-        style={{
-          padding: 32, borderRadius: 20,
-          background: 'var(--pc-surface)', border: '0.5px solid var(--pc-hair)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
-          textAlign: 'center',
-        }}
-      >
-        <span style={{ fontSize: 52 }}>✅</span>
-        <div className="font-serif" style={{ fontSize: 24, fontWeight: 600 }}>
-          Photo upload ho gayi!
-        </div>
-        <div style={{ fontSize: 15, color: 'var(--pc-ink2)', lineHeight: 1.5 }}>
-          Supabase Storage mein save ho gaya.
-        </div>
-        {storagePath && (
-          <div
-            style={{
-              fontSize: 11, fontFamily: 'var(--pc-mono)',
-              color: 'var(--pc-ink4)', wordBreak: 'break-all',
-              padding: '6px 10px', background: 'var(--pc-bg)',
-              borderRadius: 8, border: '0.5px solid var(--pc-hair)',
-            }}
-          >
-            photos/{storagePath}
-          </div>
-        )}
-        <div style={{ fontSize: 13, color: 'var(--pc-ink3)' }}>
-          Step 4 mein submissions table mein save hoga aur dashboard update hoga.
-        </div>
-      </div>
-    )
+    if (!res.ok) {
+      const { error } = await res.json() as { error: string }
+      setErrMsg(`Submission failed: ${error}`)
+      setFormState('error')
+      return
+    }
+
+    // ── Step 3: Redirect to dashboard — task now shows as submitted
+    router.push('/parent/dashboard')
+    router.refresh() // force the server component to re-fetch
   }
 
   return (
