@@ -85,7 +85,7 @@ Your job is to verify that a parent has completed their assigned health task by 
 - update_task_result MUST be called before you finish.`
 
   const model = genAI.getGenerativeModel({
-    model:             'gemini-1.5-flash',
+    model:             'gemini-2.5-flash',
     systemInstruction: systemPrompt,
     tools:             [{ functionDeclarations: geminiTools }],
   })

@@ -1,22 +1,20 @@
 import 'dotenv/config'
 import express from 'express'
-import { verifyQueue } from './queue'
+import { runVerificationAgent } from './agents/verificationAgent'
 
 const app  = express()
 const PORT = process.env.PORT ?? 3001
 
 app.use(express.json())
 
-// ── Health check ─────────────────────────────────────────────────────────────
-// Railway pings this to decide whether the container is alive.
-// Also useful for local smoke-testing after npm run dev:server.
+// ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', ts: new Date().toISOString() })
 })
 
-// ── Enqueue a verification job ────────────────────────────────────────────────
-// Called by Next.js POST /api/submissions/create after a photo is uploaded.
-// Returns immediately with a jobId — the actual AI work happens async in worker.ts.
+// ── Enqueue / run a verification job ─────────────────────────────────────────
+// Production (UPSTASH_REDIS_URL set): adds to BullMQ queue → worker picks it up.
+// Dev / local (no Redis): runs the agent directly in the request, returns when done.
 app.post('/jobs/verify', async (req, res) => {
   const { submissionId, storagePath } = req.body as {
     submissionId?: string
@@ -28,20 +26,32 @@ app.post('/jobs/verify', async (req, res) => {
     return
   }
 
-  const job = await verifyQueue.add(
-    'verify',
-    { submissionId, storagePath },
-    {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 2000 },
-      removeOnComplete: 100,
-      removeOnFail: 200,
-    }
-  )
-
-  res.status(202).json({ jobId: job.id })
+  if (process.env.UPSTASH_REDIS_URL) {
+    // ── Production: use BullMQ queue ────────────────────────────────────────
+    const { verifyQueue } = await import('./queue')
+    const job = await verifyQueue.add(
+      'verify',
+      { submissionId, storagePath },
+      {
+        attempts:         3,
+        backoff:          { type: 'exponential', delay: 2000 },
+        removeOnComplete: 100,
+        removeOnFail:     200,
+      }
+    )
+    res.status(202).json({ jobId: job.id, mode: 'queue' })
+  } else {
+    // ── Dev: run agent directly (no Redis needed) ────────────────────────────
+    console.log(`[server] dev mode — running agent inline for submission ${submissionId}`)
+    res.status(202).json({ submissionId, mode: 'direct' })
+    // Run after response is sent so the HTTP caller isn't blocked
+    runVerificationAgent(submissionId, storagePath).catch((err) => {
+      console.error('[server] agent error:', err.message)
+    })
+  }
 })
 
 app.listen(PORT, () => {
-  console.log(`[server] listening on http://localhost:${PORT}`)
+  const mode = process.env.UPSTASH_REDIS_URL ? 'queue (BullMQ)' : 'direct (no Redis)'
+  console.log(`[server] listening on http://localhost:${PORT} — mode: ${mode}`)
 })

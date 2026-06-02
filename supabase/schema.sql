@@ -478,3 +478,16 @@ create policy "photos: parent read"
     bucket_id = 'photos'
     and auth.uid()::text = (storage.foldername(name))[1]
   );
+
+-- upsert: true in SubmitForm triggers an UPDATE when the file already exists.
+-- Without this policy the second upload for the same instance fails with RLS violation.
+create policy "photos: parent update"
+  on storage.objects for update
+  using (
+    bucket_id = 'photos'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  )
+  with check (
+    bucket_id = 'photos'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
