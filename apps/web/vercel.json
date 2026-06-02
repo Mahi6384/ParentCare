@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/create-instances",
+      "schedule": "30 18 * * *"
+    }
+  ]
+}

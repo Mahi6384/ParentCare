@@ -83,11 +83,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
 
-  // Step 5 will fire the Railway AI worker here:
-  // await fetch(process.env.RAILWAY_WORKER_URL + '/verify', {
-  //   method: 'POST',
-  //   body: JSON.stringify({ submissionId: submission.id, storagePath }),
-  // })
+  // ── 4. Trigger the Railway AI worker (fire-and-forget) ───────────
+  // We don't await the result — verification is async.
+  // The worker enqueues the job and returns 202 immediately.
+  // If RAILWAY_WORKER_URL is not set (local dev), skip silently.
+  const workerUrl = process.env.RAILWAY_WORKER_URL
+  if (workerUrl) {
+    fetch(`${workerUrl}/jobs/verify`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ submissionId: submission.id, storagePath }),
+    }).catch((err) => {
+      // Log but never block the response — the parent already submitted.
+      console.error('[submissions/create] Railway trigger failed:', err.message)
+    })
+  }
 
   return NextResponse.json({ submissionId: submission.id }, { status: 201 })
 }
