@@ -76,9 +76,8 @@ export default function SubmitForm({ instanceId, parentId }: Props) {
       return
     }
 
-    // ── Step 3: Redirect to dashboard — task now shows as submitted
-    router.push('/parent/dashboard')
-    router.refresh() // force the server component to re-fetch
+    // ── Step 3: Redirect to verify screen — shows Saathi's live checklist
+    router.push(`/parent/task/${instanceId}/verify`)
   }
 
   return (
