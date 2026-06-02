@@ -1,0 +1,266 @@
+@import "tailwindcss";
+
+/*
+ ═══════════════════════════════════════════════════════════════
+  ParentCare Design System
+  Source: ParentCare.html — Claude Design handoff (May 2026)
+  Theme: Saffron · warm parchment + deep saffron brand
+  Three themes available: saffron (default), sage, terracotta
+  Two modes per theme: light (default) / .dark on <html>
+
+  STRUCTURE:
+   1. Raw token values in :root / .dark
+   2. @theme inline — registers Tailwind utility class names
+   3. Base body styles
+   4. Reusable utility classes (.pc-card, .pc-btn, etc.)
+ ═══════════════════════════════════════════════════════════════
+*/
+
+/* ─────────────────────────────────────────────
+   1A. SAFFRON · LIGHT  (default)
+   bg-bg, bg-surface, text-ink, text-brand …
+───────────────────────────────────────────── */
+:root {
+  /* Backgrounds / surfaces */
+  --pc-bg:         #F8F1E4;   /* warm parchment — page canvas */
+  --pc-surface:    #FFFFFF;   /* card / sheet surface */
+  --pc-surface2:   #F2E8D3;   /* inset / secondary surface */
+  --pc-surface3:   #EADFC6;   /* deepest inset surface */
+
+  /* Ink — text hierarchy */
+  --pc-ink:        #1F1812;   /* warm near-black — primary text */
+  --pc-ink2:       #5C4B36;   /* medium brown — secondary text */
+  --pc-ink3:       #8E7A5C;   /* muted — labels, captions */
+  --pc-ink4:       #B8A485;   /* very muted — placeholders */
+
+  /* Brand — saffron */
+  --pc-brand:      #D26B26;   /* saffron — CTAs, active states */
+  --pc-brand-deep: #A8501A;   /* deep saffron — pressed, shadow */
+  --pc-brand-soft: #F8D9B5;   /* light saffron — fills */
+  --pc-brand-tint: #FCEEDC;   /* faintest tint — hover wash */
+
+  /* Semantic */
+  --pc-ok:         #4F7A4E;   /* verified / success */
+  --pc-warn:       #C68A1E;   /* flagged / warning */
+  --pc-bad:        #B0432C;   /* failed / error */
+
+  /* Hairlines — very subtle borders */
+  --pc-hair:       rgba(31, 24, 18, 0.10);
+  --pc-hair-soft:  rgba(31, 24, 18, 0.06);
+
+  /* Typography — three stacks
+     var(--font-*) are injected by next/font in layout.tsx.
+     The fallbacks kick in during the flash before the font loads. */
+  --pc-display: var(--font-newsreader), 'Source Serif Pro', Georgia, serif;
+  --pc-body:    var(--font-plus-jakarta-sans), ui-sans-serif, system-ui, sans-serif;
+  --pc-mono:    var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+/* ─────────────────────────────────────────────
+   1B. SAFFRON · DARK
+   Toggle by adding class="dark" on <html>
+───────────────────────────────────────────── */
+.dark {
+  --pc-bg:         #1A130C;
+  --pc-surface:    #241B12;
+  --pc-surface2:   #2E2317;
+  --pc-surface3:   #3A2C1C;
+  --pc-ink:        #F4EADC;
+  --pc-ink2:       #C5B59A;
+  --pc-ink3:       #90806A;
+  --pc-ink4:       #5F543F;
+  --pc-brand:      #EE8443;
+  --pc-brand-deep: #D26B26;
+  --pc-brand-soft: #5A3719;
+  --pc-brand-tint: #2E1F11;
+  --pc-ok:         #86B57F;
+  --pc-warn:       #E2B453;
+  --pc-bad:        #E07659;
+  --pc-hair:       rgba(244, 234, 220, 0.10);
+  --pc-hair-soft:  rgba(244, 234, 220, 0.05);
+}
+
+/* ─────────────────────────────────────────────
+   2. TAILWIND v4 THEME REGISTRATION
+   --color-X creates: bg-X  text-X  border-X
+   --font-X creates: font-X utility
+   Rule: every token in :root gets a Tailwind alias.
+───────────────────────────────────────────── */
+@theme inline {
+  /* Surface colors */
+  --color-bg:          var(--pc-bg);
+  --color-surface:     var(--pc-surface);
+  --color-surface-2:   var(--pc-surface2);
+  --color-surface-3:   var(--pc-surface3);
+
+  /* Text colors */
+  --color-ink:         var(--pc-ink);
+  --color-ink-2:       var(--pc-ink2);
+  --color-ink-3:       var(--pc-ink3);
+  --color-ink-4:       var(--pc-ink4);
+
+  /* Brand colors */
+  --color-brand:       var(--pc-brand);
+  --color-brand-deep:  var(--pc-brand-deep);
+  --color-brand-soft:  var(--pc-brand-soft);
+  --color-brand-tint:  var(--pc-brand-tint);
+
+  /* Semantic colors */
+  --color-ok:          var(--pc-ok);
+  --color-warn:        var(--pc-warn);
+  --color-bad:         var(--pc-bad);
+
+  /* Fonts */
+  --font-serif: var(--pc-display);   /* font-serif → Newsreader */
+  --font-sans:  var(--pc-body);      /* font-sans  → Plus Jakarta Sans */
+  --font-mono:  var(--pc-mono);      /* font-mono  → JetBrains Mono */
+}
+
+/* ─────────────────────────────────────────────
+   3. BASE STYLES
+───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background:  var(--pc-bg);
+  color:       var(--pc-ink);
+  font-family: var(--pc-body);
+  line-height: 1.6;
+  -webkit-font-smoothing:  antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─────────────────────────────────────────────
+   4. UTILITY CLASSES
+   These mirror the shared primitives in theme.jsx.
+   Use them instead of repeating Tailwind chains.
+───────────────────────────────────────────── */
+
+/* Card — white surface, hairline border, soft shadow */
+.pc-card {
+  background:    var(--pc-surface);
+  border-radius: 14px;
+  border:        0.5px solid var(--pc-hair);
+  box-shadow:
+    0 1px 0 var(--pc-hair-soft),
+    0 12px 32px -24px rgba(31, 24, 18, 0.18);
+}
+.dark .pc-card {
+  box-shadow:
+    0 1px 0 var(--pc-hair-soft),
+    0 12px 32px -24px rgba(0, 0, 0, 0.40);
+}
+
+/* Primary button — saffron fill with inset shadow on bottom */
+.pc-btn {
+  appearance:   none;
+  display:      inline-flex;
+  align-items:  center;
+  gap:          6px;
+  padding:      9px 16px;
+  border-radius: 9px;
+  border:       none;
+  background:   var(--pc-brand);
+  color:        #fff;
+  font-family:  var(--pc-body);
+  font-size:    13px;
+  font-weight:  600;
+  line-height:  1.2;
+  cursor:       pointer;
+  /* bottom inset gives a subtle "pressed" depth */
+  box-shadow:   inset 0 -1px 0 var(--pc-brand-deep);
+  transition:   opacity 0.15s;
+  white-space:  nowrap;
+}
+.pc-btn:hover   { opacity: 0.88; }
+.pc-btn:active  { opacity: 1; box-shadow: none; }
+.pc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Ghost button — secondary surface, hairline border */
+.pc-btn-ghost {
+  appearance:   none;
+  display:      inline-flex;
+  align-items:  center;
+  gap:          6px;
+  padding:      9px 16px;
+  border-radius: 9px;
+  background:   var(--pc-surface2);
+  color:        var(--pc-ink2);
+  border:       0.5px solid var(--pc-hair);
+  font-family:  var(--pc-body);
+  font-size:    13px;
+  font-weight:  600;
+  line-height:  1.2;
+  cursor:       pointer;
+  transition:   opacity 0.15s;
+  white-space:  nowrap;
+}
+.pc-btn-ghost:hover  { opacity: 0.8; }
+.pc-btn-ghost:active { opacity: 1; }
+
+/* Input field */
+.pc-input {
+  appearance:    none;
+  width:         100%;
+  padding:       10px 14px;
+  border-radius: 9px;
+  border:        0.5px solid var(--pc-hair);
+  background:    var(--pc-surface);
+  color:         var(--pc-ink);
+  font-family:   var(--pc-body);
+  font-size:     15px;
+  line-height:   1.5;
+  outline:       none;
+  transition:    border-color 0.15s, box-shadow 0.15s;
+}
+.pc-input::placeholder { color: var(--pc-ink4); }
+.pc-input:focus {
+  border-color: var(--pc-brand);
+  box-shadow:   0 0 0 3px var(--pc-brand-tint);
+}
+
+/* Field label — monospace, uppercase, tiny */
+.pc-label {
+  display:        block;
+  font-family:    var(--pc-mono);
+  font-size:      11px;
+  font-weight:    600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color:          var(--pc-ink3);
+  margin-bottom:  6px;
+}
+
+/* Dot rule — hairline with center dot, used as section divider */
+.pc-rule {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  color:       var(--pc-ink4);
+}
+.pc-rule::before,
+.pc-rule::after {
+  content:    '';
+  flex:       1;
+  height:     0.5px;
+  background: var(--pc-hair);
+}
+
+/* Pill badge — inline semantic tag */
+.pc-pill {
+  display:       inline-flex;
+  align-items:   center;
+  gap:           5px;
+  padding:       3px 8px;
+  font-size:     11px;
+  font-weight:   500;
+  line-height:   1.2;
+  border-radius: 999px;
+  white-space:   nowrap;
+  border:        0.5px solid transparent;
+}
+.pc-pill-brand  { background: var(--pc-brand-tint); color: var(--pc-brand-deep); }
+.pc-pill-ok     { background: rgba(95, 140, 95, 0.14); color: var(--pc-ok); }
+.pc-pill-warn   { background: rgba(198, 138, 30, 0.16); color: var(--pc-warn); }
+.pc-pill-bad    { background: rgba(176, 67, 44, 0.14); color: var(--pc-bad); }
+.pc-pill-neutral { background: var(--pc-surface2); color: var(--pc-ink2); border-color: var(--pc-hair); }

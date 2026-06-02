@@ -1,0 +1,531 @@
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
+import SaathiMark from '@/components/ui/SaathiMark'
+import KidNavBar from '@/components/kid/KidNavBar'
+
+/*
+  Kid Dashboard — Overview artboard (artboard #02 in the design).
+  Layout: 60px top bar + scrollable two-column body:
+    LEFT  : greeting + 7-day strip + verification feed
+    RIGHT : streaks + concern + agent suggestion + family panel
+
+  Static placeholder data is used for:
+    - 7-day strip (will read from task_instances once built)
+    - Verification feed (will read from task_instances + ai_results)
+    - Streaks (will read from streaks table)
+    - Concern + suggestion (will come from AI health agent)
+
+  The real family data (parent linked?) comes from Supabase now.
+*/
+
+// ── Small shared primitives ──────────────────────────────────
+
+// Dot — semantic status indicator
+function Dot({ color, size = 5 }: { color: string; size?: number }) {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: size, height: size,
+        borderRadius: '50%',
+        background: color,
+        flexShrink: 0,
+      }}
+    />
+  )
+}
+
+// Pill — semantic badge with four tones matching theme.jsx
+function Pill({
+  children, tone = 'neutral',
+}: {
+  children: React.ReactNode
+  tone?: 'neutral' | 'brand' | 'ok' | 'warn' | 'bad'
+}) {
+  return (
+    <span className={`pc-pill pc-pill-${tone}`}>{children}</span>
+  )
+}
+
+// Card — surface with hairline border + soft shadow
+function Card({
+  children, pad = 18, style = {},
+}: {
+  children: React.ReactNode
+  pad?: number
+  style?: React.CSSProperties
+}) {
+  return (
+    <div className="pc-card" style={{ padding: pad, ...style }}>
+      {children}
+    </div>
+  )
+}
+
+// DotRule — journal-style hairline divider with centre dot
+function DotRule({ style = {} }: { style?: React.CSSProperties }) {
+  return (
+    <div className="pc-rule" style={style}>
+      <span
+        style={{
+          width: 3, height: 3, borderRadius: '50%',
+          background: 'var(--pc-ink4)', flexShrink: 0,
+        }}
+      />
+    </div>
+  )
+}
+
+// ── Feed card ────────────────────────────────────────────────
+
+type FeedTone = 'ok' | 'warn' | 'bad' | 'pending'
+
+interface FeedItem {
+  time:       string
+  task:       string
+  tone:       FeedTone
+  streak?:    number
+  reason:     string
+  confidence?: number
+}
+
+function FeedCard({ item }: { item: FeedItem }) {
+  const tones = {
+    ok:      { label: 'Verified',  dot: 'var(--pc-ok)' },
+    warn:    { label: 'Flagged',   dot: 'var(--pc-warn)' },
+    bad:     { label: 'Failed',    dot: 'var(--pc-bad)' },
+    pending: { label: 'Pending',   dot: 'var(--pc-ink3)' },
+  }
+  const t = tones[item.tone]
+
+  return (
+    <Card pad={0}>
+      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Meta row: time · status pill · streak · confidence */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span className="font-mono text-[11px] text-ink-3">{item.time}</span>
+          <Dot color="var(--pc-ink4)" size={3} />
+          <Pill tone={item.tone === 'pending' ? 'neutral' : item.tone}>
+            <Dot color={t.dot} size={5} /> {t.label}
+          </Pill>
+
+          {item.streak !== undefined && item.streak > 0 && (
+            <span
+              className="inline-flex items-center gap-1 text-[11px] font-semibold"
+              style={{ color: 'var(--pc-brand-deep)' }}
+            >
+              🔥 {item.streak}
+            </span>
+          )}
+
+          {item.confidence && (
+            <span className="font-mono text-[11px] text-ink-3 ml-auto">
+              conf {item.confidence.toFixed(2)}
+            </span>
+          )}
+        </div>
+
+        {/* Task name — serif display */}
+        <div
+          className="font-serif font-medium text-[17px] text-ink leading-tight"
+          style={{ letterSpacing: '-0.015em' }}
+        >
+          {item.task}
+        </div>
+
+        {/* Saathi reasoning */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <SaathiMark size={18} ring={false} />
+          <p className="text-[12.5px] leading-[1.55] text-ink-2 m-0 flex-1">
+            {item.reason}
+          </p>
+        </div>
+
+        {/* Pending actions */}
+        {item.tone === 'pending' && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <button className="pc-btn-ghost text-xs py-1.5 px-3">Send voice nudge now</button>
+            <button className="pc-btn-ghost text-xs py-1.5 px-3">Skip for today</button>
+          </div>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+// ── Page component ───────────────────────────────────────────
+
+export default async function KidDashboard() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const [{ data: profile }, { data: family }] = await Promise.all([
+    supabase.from('users').select('name').eq('id', user!.id).single(),
+    supabase.from('families').select('invite_code, parent_id').eq('kid_id', user!.id).single(),
+  ])
+
+  // ── Real feed: today's task_instances for the linked parent ────
+  const toneMap: Record<string, FeedTone> = {
+    pending:     'pending',
+    in_progress: 'pending',
+    submitted:   'pending',
+    passed:      'ok',
+    flagged:     'warn',
+    failed:      'bad',
+    skipped:     'bad',
+  }
+
+  const reasonMap: Record<string, string> = {
+    pending:     'Scheduled for today. Saathi will send a reminder at the due time.',
+    in_progress: 'Parent has opened this task.',
+    submitted:   'Photo submitted. Waiting for Saathi to verify.',
+    passed:      'Saathi verified this task as complete.',
+    flagged:     'Saathi flagged this submission — review the photo.',
+    failed:      'Task was not completed today.',
+    skipped:     'Task was skipped.',
+  }
+
+  let feed: FeedItem[] = []
+  if (family?.parent_id) {
+    const now = new Date()
+    const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+    const endOfDay   = new Date(startOfDay.getTime() + 86_400_000)
+
+    const { data: instances } = await supabase
+      .from('task_instances')
+      .select('id, status, due_at, tasks(title)')
+      .eq('parent_id', family.parent_id)
+      .gte('due_at', startOfDay.toISOString())
+      .lt('due_at', endOfDay.toISOString())
+      .order('due_at', { ascending: true })
+
+    feed = (instances ?? []).map(inst => {
+      const title = (inst.tasks as unknown as { title: string } | null)?.title ?? 'Unknown task'
+      const due   = new Date(inst.due_at)
+      const time  = due.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      return {
+        time,
+        task:   title,
+        tone:   (toneMap[inst.status] ?? 'pending') as FeedTone,
+        reason: reasonMap[inst.status] ?? '',
+      }
+    })
+  }
+
+  // 7-day completion data — [Mon … Sun], value = completed / total
+  // TODO: replace with real task_instance query grouped by day
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const weekDates = [12, 13, 14, 15, 16, 17, 18]
+  const weekCompletion = [5, 4, 5, 5, 3, 0, 0] // out of 5
+  const todayIndex = 4 // Friday
+
+  return (
+    <div
+      className="flex flex-col"
+      style={{ minHeight: '100vh', background: 'var(--pc-bg)', color: 'var(--pc-ink)', fontFamily: 'var(--pc-body)' }}
+    >
+      {/* ── Top navigation bar — extracted to KidNavBar component ── */}
+      <KidNavBar userName={profile?.name ?? ''} activeTab="overview" />
+
+      {/* ── Body — two-column grid ── */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 360px',
+          gap: 24,
+          padding: '24px 28px 40px',
+          flex: 1,
+        }}
+      >
+        {/* ══ LEFT — Feed ══════════════════════════════════════ */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
+
+          {/* Greeting + parent-not-connected warning */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <div
+                  className="font-serif font-medium text-[30px] text-ink"
+                  style={{ letterSpacing: '-0.03em', lineHeight: 1.1 }}
+                >
+                  Good morning, {profile?.name}.
+                </div>
+                {family?.parent_id ? (
+                  <div className="mt-1 text-sm text-ink-2">
+                    Papa is{' '}
+                    <span className="font-semibold" style={{ color: 'var(--pc-ok)' }}>
+                      3 of 5 tasks
+                    </span>
+                    {' '}in today · last activity 2 minutes ago.
+                    {/* TODO: replace with real task_instance counts */}
+                  </div>
+                ) : (
+                  // Parent not yet connected — show invite nudge
+                  <div
+                    className="mt-3 rounded-2xl p-4"
+                    style={{ background: 'var(--pc-brand-tint)', border: '0.5px solid var(--pc-brand-soft)' }}
+                  >
+                    <p className="font-semibold text-sm" style={{ color: 'var(--pc-brand-deep)' }}>
+                      ⚠️ Parent not connected yet
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--pc-brand-deep)', opacity: 0.8 }}>
+                      Share code{' '}
+                      <span className="font-bold font-mono tracking-widest">{family?.invite_code}</span>
+                      {' '}with your parent.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <span className="pc-pill pc-pill-neutral">🔕 Quiet mode</span>
+                <Link href="/kid/tasks/new" className="pc-pill pc-pill-brand" style={{ textDecoration: 'none' }}>＋ New task</Link>
+              </div>
+            </div>
+
+            {/* 7-day strip */}
+            <div style={{ marginTop: 18, display: 'flex', gap: 6 }}>
+              {weekDays.map((d, i) => {
+                const isToday = i === todayIndex
+                const pct     = weekCompletion[i] / 5
+                return (
+                  <div
+                    key={d}
+                    style={{
+                      flex: 1, padding: '10px 8px', borderRadius: 10,
+                      background: isToday ? 'var(--pc-brand-tint)' : 'var(--pc-surface)',
+                      border: `0.5px solid ${isToday ? 'var(--pc-brand)' : 'var(--pc-hair)'}`,
+                      display: 'flex', flexDirection: 'column', gap: 7,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <span
+                        style={{
+                          fontSize: 10.5, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
+                          color: isToday ? 'var(--pc-brand-deep)' : 'var(--pc-ink3)',
+                        }}
+                      >
+                        {d}
+                      </span>
+                      <span
+                        className="font-serif font-medium text-[15px]"
+                        style={{ color: isToday ? 'var(--pc-brand-deep)' : 'var(--pc-ink)' }}
+                      >
+                        {weekDates[i]}
+                      </span>
+                    </div>
+                    {/* Thin progress bar */}
+                    <div style={{ height: 4, background: 'var(--pc-hair-soft)', borderRadius: 99 }}>
+                      <div
+                        style={{
+                          width: `${pct * 100}%`, height: '100%', borderRadius: 99,
+                          background: isToday
+                            ? 'var(--pc-brand)'
+                            : pct === 1 ? 'var(--pc-ok)' : pct >= 0.6 ? 'var(--pc-brand)' : 'var(--pc-ink4)',
+                        }}
+                      />
+                    </div>
+                    <span style={{ fontSize: 10.5, color: 'var(--pc-ink2)' }}>
+                      {i > todayIndex ? '—' : `${weekCompletion[i]}/5`}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Verification feed */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+              <h2
+                className="font-serif font-medium text-[19px] text-ink m-0"
+                style={{ letterSpacing: '-0.01em' }}
+              >
+                Today — verification feed
+              </h2>
+              <div style={{ fontSize: 12, color: 'var(--pc-ink3)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Dot color="var(--pc-ok)" size={5} />
+                Live · last reasoned{' '}
+                <span className="font-mono" style={{ color: 'var(--pc-ink2)' }}>00:02:14</span>
+                {' '}ago
+              </div>
+            </div>
+
+            {feed.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center', padding: '48px 0',
+                  color: 'var(--pc-ink3)', fontSize: 14,
+                }}
+              >
+                <div style={{ fontSize: 32, marginBottom: 12 }}>📋</div>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>No tasks scheduled for today.</div>
+                <Link
+                  href="/kid/tasks/new"
+                  style={{ color: 'var(--pc-brand)', textDecoration: 'none', fontWeight: 500 }}
+                >
+                  Create your first task →
+                </Link>
+              </div>
+            ) : (
+              feed.map((item, i) => <FeedCard key={i} item={item} />)
+            )}
+          </div>
+        </div>
+
+        {/* ══ RIGHT rail ═══════════════════════════════════════ */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+
+          {/* Streaks */}
+          <Card pad={16}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+              <span className="font-serif font-medium text-[16px] text-ink">Streaks</span>
+              <span className="font-mono text-[11px] text-ink-3">this month</span>
+            </div>
+            {/* TODO: replace with real streaks table query */}
+            {[
+              { name: 'Medicine — Telma 40', n: 22, max: 30, icon: '💊', color: 'var(--pc-brand)' },
+              { name: 'Morning walk',        n: 6,  max: 7,  icon: '🚶', color: 'var(--pc-ok)' },
+              { name: 'Evening exercise',    n: 4,  max: 7,  icon: '🧘', color: 'var(--pc-brand)' },
+              { name: 'Sleep by 11 PM',      n: 2,  max: 7,  icon: '🌙', color: 'var(--pc-warn)' },
+            ].map((s, i) => (
+              <div
+                key={s.name}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 0',
+                  borderTop: i ? '0.5px dashed var(--pc-hair)' : 'none',
+                }}
+              >
+                <div
+                  style={{
+                    width: 30, height: 30, borderRadius: 8,
+                    background: 'var(--pc-brand-tint)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 14,
+                  }}
+                >
+                  {s.icon}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 12.5, fontWeight: 500,
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {s.name}
+                  </div>
+                  <div style={{ height: 3, background: 'var(--pc-surface2)', borderRadius: 99, marginTop: 4 }}>
+                    <div
+                      style={{
+                        width: `${(s.n / s.max) * 100}%`,
+                        height: '100%', borderRadius: 99, background: s.color,
+                      }}
+                    />
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                  <span className="font-serif font-medium text-[18px] text-ink">{s.n}</span>
+                  <span className="text-[10.5px] text-ink-3">/ {s.max}</span>
+                </div>
+              </div>
+            ))}
+          </Card>
+
+          {/* Health concern — saffron-tinted card */}
+          <Card
+            pad={16}
+            style={{ background: 'var(--pc-brand-tint)', border: '0.5px solid var(--pc-brand)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <SaathiMark size={26} />
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    fontSize: 10.5, fontWeight: 600, letterSpacing: '0.06em',
+                    textTransform: 'uppercase', color: 'var(--pc-brand-deep)',
+                    marginBottom: 6,
+                  }}
+                >
+                  Health concern <Dot color="var(--pc-brand)" size={4} /> medium
+                </div>
+                <div
+                  className="font-serif font-medium text-[17px] text-ink leading-tight"
+                  style={{ letterSpacing: '-0.01em' }}
+                >
+                  Low protein intake for 9 days running.
+                </div>
+                <p style={{ margin: '8px 0 0', fontSize: 12.5, lineHeight: 1.55, color: 'var(--pc-ink2)' }}>
+                  Lunches and dinners have been roti-and-sabzi only since the 3rd.
+                  Saathi has drafted a dal-and-paneer rotation for next week.
+                </p>
+                <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+                  <button className="pc-btn text-xs py-1.5 px-3">Review plan</button>
+                  <button className="pc-btn-ghost text-xs py-1.5 px-3">Mute concern</button>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Agent suggestion */}
+          <Card pad={16}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <SaathiMark size={20} />
+              <span
+                style={{
+                  fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+                  textTransform: 'uppercase', color: 'var(--pc-ink3)',
+                }}
+              >
+                Saathi suggests
+              </span>
+            </div>
+            <div
+              className="font-serif font-medium text-[16px] text-ink leading-tight"
+              style={{ letterSpacing: '-0.01em' }}
+            >
+              Add a 10-min breathing exercise before bed.
+            </div>
+            <p style={{ margin: '6px 0 0', fontSize: 12.5, lineHeight: 1.5, color: 'var(--pc-ink2)' }}>
+              Papa's sleep streak is at 2/7. Pranayama before bed has the
+              strongest evidence for hypertension — and it doesn't aggravate
+              his knee.
+            </p>
+            <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+              <button className="pc-btn text-xs py-1.5 px-3">✓ Approve</button>
+              <button className="pc-btn-ghost text-xs py-1.5 px-3">Edit</button>
+              <button className="pc-btn-ghost text-xs py-1.5 px-3" style={{ color: 'var(--pc-ink3)' }}>Dismiss</button>
+            </div>
+          </Card>
+
+          {/* Family panel */}
+          {family?.parent_id && (
+            <Card pad={14}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: 'var(--pc-surface2)', border: '0.5px solid var(--pc-hair)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontFamily: 'var(--pc-display)', fontSize: 16, fontWeight: 600,
+                  }}
+                >
+                  P
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>Papa</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--pc-ink3)' }}>Connected · Delhi, IST</div>
+                </div>
+                <span className="pc-pill pc-pill-ok">
+                  <Dot color="var(--pc-ok)" size={5} /> active
+                </span>
+              </div>
+            </Card>
+          )}
+
+        </div>
+      </div>
+    </div>
+  )
+}

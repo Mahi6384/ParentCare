@@ -1,0 +1,36 @@
+# Environment variables
+.env
+.env.*
+
+# Claude Code workspace files
+CLAUDE.md
+.claude/
+
+# Product planning docs (internal only)
+PRODUCT_PLAN.md
+PRODUCT_PLAN_V2.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Vercel
+.vercel
