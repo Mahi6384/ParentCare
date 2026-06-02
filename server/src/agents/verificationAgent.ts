@@ -1,36 +1,32 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createClient } from '@supabase/supabase-js'
-import { tools } from '../tools/schemas'
+import { geminiTools } from '../tools/geminiSchemas'
 import { executeTool } from '../tools/executor'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
+const genAI    = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
 /*
-  runVerificationAgent — the core agentic loop.
+  runVerificationAgent — the core agentic loop, powered by Gemini 1.5 Flash.
 
-  Flow:
-  1. Fetch submission + task_instance from Supabase to get context
-  2. Generate a signed URL for the photo
-  3. Send initial message to Claude with the photo + task context
-  4. Claude iterates: calls tools → we execute → return results → Claude calls more tools
-  5. Loop exits when stop_reason === 'end_turn'
-  6. Claude must have called update_task_result before ending — if not, we flag and log
+  Key difference from Anthropic: Gemini doesn't accept image URLs directly.
+  We fetch the photo from Supabase Storage and pass it as base64 inlineData.
 
-  Model choice:
-  - claude-sonnet-4-6 for the main loop (needs vision for photo verification)
-  - Switch to claude-haiku-4-5 for text-only loops in Phase 2 to save cost
+  Loop logic:
+  - Send initial message (image + task context)
+  - Check response.functionCalls() — if non-empty, Claude wants tools
+  - Execute each tool, send results back as functionResponse parts
+  - Repeat until functionCalls() is empty (model finished reasoning)
 */
 export async function runVerificationAgent(
   submissionId: string,
   storagePath:  string
 ): Promise<void> {
 
-  // ── 1. Load context from DB ─────────────────────────────────────────────
+  // ── 1. Load context from DB ───────────────────────────────────────────────
   const { data: submission } = await supabase
     .from('submissions')
     .select('id, task_instance_id, photo_url, submitted_at')
@@ -49,15 +45,20 @@ export async function runVerificationAgent(
 
   const task = instance.tasks as unknown as { title: string; type: string }
 
-  // ── 2. Generate signed URL for the photo ───────────────────────────────
+  // ── 2. Fetch photo as base64 ──────────────────────────────────────────────
+  // Gemini requires inline image data — it can't fetch a Supabase signed URL directly.
   const { data: signed } = await supabase
     .storage
     .from('photos')
-    .createSignedUrl(storagePath, 60 * 10) // 10-minute expiry — enough for one agent run
+    .createSignedUrl(storagePath, 60 * 10)
 
   if (!signed?.signedUrl) throw new Error('Could not generate signed URL for photo')
 
-  // ── 3. Build initial message ────────────────────────────────────────────
+  const imageRes    = await fetch(signed.signedUrl)
+  const imageBuffer = await imageRes.arrayBuffer()
+  const imageBase64 = Buffer.from(imageBuffer).toString('base64')
+
+  // ── 3. Set up Gemini model ────────────────────────────────────────────────
   const systemPrompt = `You are Saathi, an AI health verification agent for ParentCare.
 
 Your job is to verify that a parent has completed their assigned health task by analysing their submitted photo, then record a result and notify the kid.
@@ -83,13 +84,21 @@ Your job is to verify that a parent has completed their assigned health task by 
 - Do not fabricate details about the photo that you cannot see.
 - update_task_result MUST be called before you finish.`
 
-  const initialContent: Anthropic.MessageParam['content'] = [
+  const model = genAI.getGenerativeModel({
+    model:             'gemini-1.5-flash',
+    systemInstruction: systemPrompt,
+    tools:             [{ functionDeclarations: geminiTools }],
+  })
+
+  // ── 4. Tool-use loop ──────────────────────────────────────────────────────
+  const chat = model.startChat()
+
+  // Initial message: photo (base64) + task context text
+  let response = await chat.sendMessage([
     {
-      type: 'image',
-      source: { type: 'url', url: signed.signedUrl },
+      inlineData: { data: imageBase64, mimeType: 'image/jpeg' },
     },
     {
-      type: 'text',
       text: `Please verify this submission.
 
 Task: "${task.title}" (type: ${task.type})
@@ -101,79 +110,59 @@ Submitted at: ${submission.submitted_at}
 
 Start by checking recent history, then analyse the photo, then record the result.`,
     },
-  ]
-
-  // ── 4. Tool-use loop ────────────────────────────────────────────────────
-  const messages: Anthropic.MessageParam[] = [
-    { role: 'user', content: initialContent },
-  ]
+  ])
 
   const toolsCalledThisRun: string[] = []
   let resultRecorded = false
 
   while (true) {
-    const response = await anthropic.messages.create({
-      model:      'claude-sonnet-4-6',
-      max_tokens: 4096,
-      system:     systemPrompt,
-      tools,
-      messages,
-    })
+    const calls = response.response.functionCalls()
 
-    // Track tool calls for the audit log
-    for (const block of response.content) {
-      if (block.type === 'tool_use') {
-        toolsCalledThisRun.push(block.name)
-        if (block.name === 'update_task_result') resultRecorded = true
-      }
-    }
+    // No function calls → model finished reasoning
+    if (!calls || calls.length === 0) break
 
-    // Exit when Claude is done
-    if (response.stop_reason === 'end_turn') break
+    const functionResponses = await Promise.all(
+      calls.map(async (call) => {
+        toolsCalledThisRun.push(call.name)
+        if (call.name === 'update_task_result') resultRecorded = true
 
-    // Execute all tool calls Claude made in this turn
-    const toolResults: Anthropic.ToolResultBlockParam[] = []
+        let result: unknown
+        try {
+          result = await executeTool(call.name, call.args as Record<string, unknown>)
+        } catch (err) {
+          result = { error: (err as Error).message }
+        }
 
-    for (const block of response.content) {
-      if (block.type !== 'tool_use') continue
-
-      let toolOutput: unknown
-      try {
-        toolOutput = await executeTool(block.name, block.input as Record<string, unknown>)
-      } catch (err) {
-        toolOutput = { error: (err as Error).message }
-      }
-
-      toolResults.push({
-        type:        'tool_result',
-        tool_use_id: block.id,
-        content:     JSON.stringify(toolOutput),
+        return {
+          functionResponse: {
+            name:     call.name,
+            response: { result },
+          },
+        }
       })
-    }
+    )
 
-    // Push assistant turn + tool results back into the conversation
-    messages.push({ role: 'assistant', content: response.content })
-    messages.push({ role: 'user',      content: toolResults })
+    response = await chat.sendMessage(functionResponses)
   }
 
-  // ── 5. Safety net: if agent forgot to record the result ─────────────────
+  // ── 5. Safety net ─────────────────────────────────────────────────────────
   if (!resultRecorded) {
-    console.error(`[agent] update_task_result was never called for submission ${submissionId}`)
+    console.error(`[agent] update_task_result never called for submission ${submissionId}`)
     await supabase
       .from('task_instances')
       .update({ status: 'flagged', updated_at: new Date().toISOString() })
       .eq('id', instance.id)
   }
 
-  // ── 6. Audit log ────────────────────────────────────────────────────────
+  // ── 6. Audit log ──────────────────────────────────────────────────────────
   await supabase
     .from('agent_decisions')
     .insert({
       loop_type:    'verification',
       parent_id:    instance.parent_id,
       tools_called: toolsCalledThisRun,
-      reasoning:    messages.at(-1)?.content ?? null,
+      reasoning:    response.response.text(),
     })
 
-  console.log(`[agent] verification complete for submission ${submissionId} — tools: ${toolsCalledThisRun.join(', ')}`)
+  console.log(`[agent] done — submission ${submissionId} — tools: ${toolsCalledThisRun.join(', ')}`)
 }
