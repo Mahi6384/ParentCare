@@ -133,9 +133,11 @@ create table public.exercise_steps (
   id            uuid primary key default uuid_generate_v4(),
   routine_id    uuid not null references public.exercise_routines(id) on delete cascade,
   step_index    int not null,
+  section       text not null default 'Main Set',
   name          text not null,
   reps          int,
   duration_sec  int,
+  rest_sec      int,
   modification  text,                           -- condition-specific modification
   completed_at  timestamptz                     -- null = not done yet
 );
