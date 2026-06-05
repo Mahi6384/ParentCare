@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import express from 'express'
 import { runVerificationAgent } from './agents/verificationAgent'
+import { runExerciseCoachAgent } from './agents/exerciseCoachAgent'
 
 const app  = express()
 const PORT = process.env.PORT ?? 3001
@@ -51,7 +52,32 @@ app.post('/jobs/verify', async (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
+app.post('/jobs/exercise-coach', async (req, res) => {
+  const { taskInstanceId } = req.body as { taskInstanceId?: string }
+
+  if (!taskInstanceId) {
+    res.status(400).json({ error: 'taskInstanceId is required' })
+    return
+  }
+
+  console.log(`[server] exercise-coach — generating routine for instance ${taskInstanceId}`)
+  res.status(202).json({ taskInstanceId, mode: 'direct' })
+
+  runExerciseCoachAgent(taskInstanceId).catch((err) => {
+    console.error('[server] coach-agent error:', err.message)
+  })
+})
+
+const server = app.listen(PORT, () => {
   const mode = process.env.UPSTASH_REDIS_URL ? 'queue (BullMQ)' : 'direct (no Redis)'
   console.log(`[server] listening on http://localhost:${PORT} — mode: ${mode}`)
+})
+
+server.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[server] port ${PORT} is already in use — kill the old process first`)
+  } else {
+    console.error('[server] fatal error:', err.message)
+  }
+  process.exit(1)
 })
