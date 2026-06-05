@@ -89,14 +89,16 @@ export default async function ParentDashboard() {
       hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
     })
     const done = !['pending', 'in_progress'].includes(instance.status)
+    const subLabel = task.type === 'exercise' ? 'exercise coach' : 'photo verification'
     return {
-      id:   instance.id,
+      id:    instance.id,
+      type:  task.type,
       title: task.title,
-      sub:  done ? instance.status : `${dueTime} · photo verification`,
-      icon: taskTypeIcons[task.type] ?? '✅',
+      sub:   done ? instance.status : `${dueTime} · ${subLabel}`,
+      icon:  taskTypeIcons[task.type] ?? '✅',
       done,
-      note: done ? instance.status : undefined,
-      due:  done ? undefined : dueTime,
+      note:  done ? instance.status : undefined,
+      due:   done ? undefined : dueTime,
     }
   })
 
@@ -207,9 +209,12 @@ export default async function ParentDashboard() {
                 {nextTask.sub} — Saathi aapko guide karega.
               </div>
 
-              {/* CTA button — navigates to photo submission for this task */}
+              {/* CTA button — exercise goes to coach, all others go to photo submit */}
               <Link
-                href={`/parent/submit/${nextTask.id}`}
+                href={nextTask.type === 'exercise'
+                  ? `/parent/task/${nextTask.id}/coach`
+                  : `/parent/submit/${nextTask.id}`
+                }
                 style={{
                   marginTop: 18,
                   background: 'var(--pc-surface)', color: 'var(--pc-brand-deep)',
@@ -240,8 +245,15 @@ export default async function ParentDashboard() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {tasks.map(t => (
-              <div
+              <Link
                 key={t.id}
+                href={t.done ? '#' : t.type === 'exercise'
+                  ? `/parent/task/${t.id}/coach`
+                  : `/parent/submit/${t.id}`
+                }
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
+              <div
                 style={{
                   background: 'var(--pc-surface)',
                   borderRadius: 16,
@@ -290,6 +302,7 @@ export default async function ParentDashboard() {
                   }
                 </div>
               </div>
+              </Link>
             ))}
           </div>
 
