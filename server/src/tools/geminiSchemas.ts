@@ -132,6 +132,34 @@ export const geminiTools: FunctionDeclaration[] = [
     },
   },
   {
+    name: 'generate_exercise_routine',
+    description: 'Save a personalised exercise routine for this session. Call this after reading the health profile and deciding on appropriate exercises. Pass the full list of steps — the tool persists them to the database.',
+    parameters: {
+      type: S.OBJECT,
+      properties: {
+        task_instance_id: { type: S.STRING, description: 'UUID of the task_instance this routine belongs to' },
+        parent_id:        { type: S.STRING, description: 'UUID of the parent user' },
+        steps: {
+          type: S.ARRAY,
+          description: 'Ordered list of exercise steps',
+          items: {
+            type: S.OBJECT,
+            properties: {
+              section:      { type: S.STRING, description: 'Warm-up, Main Set, or Cool-down' },
+              name:         { type: S.STRING, description: 'Exercise name in English' },
+              reps:         { type: S.NUMBER, description: 'Number of repetitions (omit if time-based)' },
+              duration_sec: { type: S.NUMBER, description: 'Duration in seconds (omit if rep-based)' },
+              rest_sec:     { type: S.NUMBER, description: 'Rest after this step in seconds' },
+              modification: { type: S.STRING, description: 'Safety note for this parent (e.g. use chair for support)' },
+            },
+            required: ['section', 'name'],
+          },
+        },
+      },
+      required: ['task_instance_id', 'parent_id', 'steps'],
+    },
+  },
+  {
     name: 'add_agent_note',
     description: 'Save a private note about this parent for future agent runs.',
     parameters: {
