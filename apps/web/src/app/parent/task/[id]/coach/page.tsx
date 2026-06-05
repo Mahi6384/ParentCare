@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import CoachUI from './CoachUI'
+import CoachLoader from './CoachLoader'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -39,29 +39,11 @@ export default async function CoachPage({ params }: Props) {
 
   const task = instance.tasks as unknown as { title: string; type: string }
 
-  // Try to load a real generated routine (exercise_routines table added in Milestone B1).
-  // Falls back to MOCK_STEPS if the table doesn't exist yet or no routine has been generated.
-  let steps: ExerciseStep[] = MOCK_STEPS
-  try {
-    const { data: routine } = await supabase
-      .from('exercise_routines')
-      .select('exercise_steps ( step_index, section, name, reps, duration_sec, rest_sec, modification )')
-      .eq('task_instance_id', id)
-      .order('generated_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    const realSteps = routine?.exercise_steps as ExerciseStep[] | undefined
-    if (realSteps?.length) steps = realSteps
-  } catch {
-    // Table doesn't exist yet — MOCK_STEPS is the fallback
-  }
-
   return (
-    <CoachUI
+    <CoachLoader
       instanceId={id}
       taskTitle={task.title}
-      steps={steps}
+      mockSteps={MOCK_STEPS}
     />
   )
 }

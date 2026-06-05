@@ -6,8 +6,9 @@ import type { ExerciseStep } from './page'
 
 interface Props {
   instanceId: string
-  taskTitle: string
-  steps: ExerciseStep[]
+  taskTitle:  string
+  steps:      ExerciseStep[]
+  usedMock?:  boolean
 }
 
 const SECTION_DESC: Record<string, string> = {
