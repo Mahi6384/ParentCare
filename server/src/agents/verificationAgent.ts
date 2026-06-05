@@ -10,7 +10,7 @@ const supabase = createClient(
 )
 
 /*
-  runVerificationAgent — the core agentic loop, powered by Gemini 1.5 Flash.
+  runVerificationAgent — the core agentic loop, powered by Gemini 3.5 Flash.
 
   Key difference from Anthropic: Gemini doesn't accept image URLs directly.
   We fetch the photo from Supabase Storage and pass it as base64 inlineData.
@@ -85,7 +85,7 @@ Your job is to verify that a parent has completed their assigned health task by 
 - update_task_result MUST be called before you finish.`
 
   const model = genAI.getGenerativeModel({
-    model:             'gemini-2.5-flash',
+    model:             'gemini-3.5-flash',
     systemInstruction: systemPrompt,
     tools:             [{ functionDeclarations: geminiTools }],
   })
@@ -93,11 +93,8 @@ Your job is to verify that a parent has completed their assigned health task by 
   // ── 4. Tool-use loop ──────────────────────────────────────────────────────
   const chat = model.startChat()
 
-  // Initial message: photo (base64) + task context text
-  let response = await chat.sendMessage([
-    {
-      inlineData: { data: imageBase64, mimeType: 'image/jpeg' },
-    },
+  const initialMessage = [
+    { inlineData: { data: imageBase64, mimeType: 'image/jpeg' } },
     {
       text: `Please verify this submission.
 
@@ -110,7 +107,26 @@ Submitted at: ${submission.submitted_at}
 
 Start by checking recent history, then analyse the photo, then record the result.`,
     },
-  ])
+  ]
+
+  // Retry up to 3 times on 503 (free-tier overload) with 6s backoff
+  let response: Awaited<ReturnType<typeof chat.sendMessage>> | undefined
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      response = await chat.sendMessage(initialMessage)
+      break
+    } catch (err: unknown) {
+      const msg = (err as Error).message ?? ''
+      if (attempt < 3 && msg.includes('503')) {
+        console.log(`[agent] 503 on attempt ${attempt}, retrying in 6s...`)
+        await new Promise(r => setTimeout(r, 6000))
+        continue
+      }
+      throw err
+    }
+  }
+
+  if (!response) throw new Error('No response from Gemini after 3 attempts')
 
   const toolsCalledThisRun: string[] = []
   let resultRecorded = false
