@@ -2,6 +2,7 @@ import 'dotenv/config'
 import express from 'express'
 import { runVerificationAgent } from './agents/verificationAgent'
 import { runExerciseCoachAgent } from './agents/exerciseCoachAgent'
+import { runNudgeAgentForAllFamilies } from './agents/nudgeAgent'
 
 const app  = express()
 const PORT = process.env.PORT ?? 3001
@@ -50,6 +51,15 @@ app.post('/jobs/verify', async (req, res) => {
       console.error('[server] agent error:', err.message)
     })
   }
+})
+
+app.post('/jobs/nudge', async (_req, res) => {
+  console.log('[server] nudge job triggered — running for all families')
+  res.status(202).json({ mode: 'direct' })
+
+  runNudgeAgentForAllFamilies().catch((err) => {
+    console.error('[server] nudge-agent error:', err.message)
+  })
 })
 
 app.post('/jobs/exercise-coach', async (req, res) => {
