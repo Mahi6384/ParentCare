@@ -30,13 +30,13 @@ const supabase = createClient(
 */
 export async function executeTool(
     name: string,
-    input: Record<string, unknown>,
+    input: unknown,
 ): Promise<unknown> {
     switch (name) {
         // ── READ TOOLS ─────────────────────────────────────────────────────────
 
         case "get_parent_history": {
-            const { parent_id, days } = input as unknown as GetParentHistoryInput;
+            const { parent_id, days } = input as GetParentHistoryInput;
             const since = new Date(
                 Date.now() - days * 86_400_000,
             ).toISOString();
@@ -60,7 +60,7 @@ export async function executeTool(
         }
 
         case "get_nutrition_trend": {
-            const { parent_id, days } = input as unknown as GetNutritionTrendInput;
+            const { parent_id, days } = input as GetNutritionTrendInput;
             const since = new Date(
                 Date.now() - days * 86_400_000,
             ).toISOString();
@@ -78,7 +78,7 @@ export async function executeTool(
         }
 
         case "get_missed_tasks": {
-            const { parent_id, days } = input as unknown as GetMissedTasksInput;
+            const { parent_id, days } = input as GetMissedTasksInput;
             const since = new Date(
                 Date.now() - days * 86_400_000,
             ).toISOString();
@@ -95,7 +95,7 @@ export async function executeTool(
         }
 
         case "get_family_context": {
-            const { parent_id } = input as unknown as GetFamilyContextInput;
+            const { parent_id } = input as GetFamilyContextInput;
 
             const { data } = await supabase
                 .from("families")
@@ -109,7 +109,7 @@ export async function executeTool(
         }
 
         case "get_health_profile": {
-            const { parent_id } = input as unknown as GetHealthProfileInput;
+            const { parent_id } = input as GetHealthProfileInput;
 
             const { data } = await supabase
                 .from("health_profiles")
@@ -131,7 +131,7 @@ export async function executeTool(
                 reasoning,
                 nutrition_json,
                 medication_json,
-            } = input as unknown as UpdateTaskResultInput;
+            } = input as UpdateTaskResultInput;
 
             // Insert ai_results row
             const { error: aiErr } = await supabase.from("ai_results").insert({
@@ -200,7 +200,7 @@ export async function executeTool(
 
         case "flag_health_concern": {
             const { parent_id, concern_type, description, severity } =
-                input as unknown as FlagHealthConcernInput;
+                input as FlagHealthConcernInput;
 
             const { error } = await supabase
                 .from("health_concerns")
@@ -214,7 +214,7 @@ export async function executeTool(
         }
 
         case "add_agent_note": {
-            const { parent_id, note, note_type } = input as unknown as AddAgentNoteInput;
+            const { parent_id, note, note_type } = input as AddAgentNoteInput;
 
             const { error } = await supabase
                 .from("agent_notes")
@@ -226,7 +226,7 @@ export async function executeTool(
         }
 
         case "send_kid_alert": {
-            const { kid_id, message, alert_type } = input as unknown as SendKidAlertInput;
+            const { kid_id, message, alert_type } = input as SendKidAlertInput;
 
             const { error } = await supabase
                 .from("notifications")
@@ -241,7 +241,7 @@ export async function executeTool(
 
         case "suggest_task": {
             const { kid_id, task_type, title, reasoning, frequency } =
-                input as unknown as SuggestTaskInput;
+                input as SuggestTaskInput;
 
             const { error } = await supabase
                 .from("task_suggestions")
@@ -263,7 +263,7 @@ export async function executeTool(
 
         case "verify_photo": {
             // Generate a signed URL from Supabase Storage so the agent can re-examine the photo.
-            const { storage_path } = input as unknown as VerifyPhotoInput;
+            const { storage_path } = input as VerifyPhotoInput;
 
             const { data, error } = await supabase.storage
                 .from("photos")
