@@ -212,12 +212,50 @@ export default async function KidDashboard() {
     })
   }
 
-  // 7-day completion data — [Mon … Sun], value = completed / total
-  // TODO: replace with real task_instance query grouped by day
-  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const weekDates = [12, 13, 14, 15, 16, 17, 18]
-  const weekCompletion = [5, 4, 5, 5, 3, 0, 0] // out of 5
-  const todayIndex = 4 // Friday
+  // ── 7-day strip (real data) ──────────────────────────────────
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 6)
+  sevenDaysAgo.setUTCHours(0, 0, 0, 0)
+
+  const { data: weekInstances } = family?.parent_id
+    ? await supabase
+        .from('task_instances')
+        .select('due_at, status')
+        .eq('parent_id', family.parent_id)
+        .gte('due_at', sevenDaysAgo.toISOString())
+        .order('due_at', { ascending: true })
+    : { data: [] }
+
+  const DONE_STATUSES = new Set(['passed', 'approved', 'flagged'])
+  const todayUTC = new Date().toISOString().slice(0, 10)
+
+  const stripData = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setUTCDate(d.getUTCDate() - (6 - i))
+    d.setUTCHours(0, 0, 0, 0)
+    const dayStr = d.toISOString().slice(0, 10)
+    const dayInsts = (weekInstances ?? []).filter(inst => inst.due_at.slice(0, 10) === dayStr)
+    const total = dayInsts.length
+    const done  = dayInsts.filter(inst => DONE_STATUSES.has(inst.status)).length
+    return {
+      dayName: d.toLocaleDateString('en-IN', { weekday: 'short', timeZone: 'UTC' }),
+      date:    d.getUTCDate(),
+      done, total,
+      isToday: dayStr === todayUTC,
+    }
+  })
+
+  // ── Streaks (real data) ───────────────────────────────────────
+  const { data: streakRows } = family?.parent_id
+    ? await supabase
+        .from('streaks')
+        .select('current_streak, longest_streak, task_id, tasks(title, type)')
+        .eq('parent_id', family.parent_id)
+        .order('current_streak', { ascending: false })
+        .limit(5)
+    : { data: [] }
+
+  const completedToday = feed.filter(f => f.tone === 'ok' || f.tone === 'warn').length
 
   return (
     <div
@@ -252,12 +290,17 @@ export default async function KidDashboard() {
                 </div>
                 {family?.parent_id ? (
                   <div className="mt-1 text-sm text-ink-2">
-                    Papa is{' '}
-                    <span className="font-semibold" style={{ color: 'var(--pc-ok)' }}>
-                      3 of 5 tasks
-                    </span>
-                    {' '}in today · last activity 2 minutes ago.
-                    {/* TODO: replace with real task_instance counts */}
+                    {feed.length > 0 ? (
+                      <>
+                        Parent has{' '}
+                        <span className="font-semibold" style={{ color: 'var(--pc-ok)' }}>
+                          {completedToday} of {feed.length} tasks done
+                        </span>
+                        {' '}today.
+                      </>
+                    ) : (
+                      'No tasks scheduled yet today.'
+                    )}
                   </div>
                 ) : (
                   // Parent not yet connected — show invite nudge
@@ -282,18 +325,17 @@ export default async function KidDashboard() {
               </div>
             </div>
 
-            {/* 7-day strip */}
+            {/* 7-day strip — real data */}
             <div style={{ marginTop: 18, display: 'flex', gap: 6 }}>
-              {weekDays.map((d, i) => {
-                const isToday = i === todayIndex
-                const pct     = weekCompletion[i] / 5
+              {stripData.map((day) => {
+                const pct = day.total > 0 ? day.done / day.total : 0
                 return (
                   <div
-                    key={d}
+                    key={day.dayName}
                     style={{
                       flex: 1, padding: '10px 8px', borderRadius: 10,
-                      background: isToday ? 'var(--pc-brand-tint)' : 'var(--pc-surface)',
-                      border: `0.5px solid ${isToday ? 'var(--pc-brand)' : 'var(--pc-hair)'}`,
+                      background: day.isToday ? 'var(--pc-brand-tint)' : 'var(--pc-surface)',
+                      border: `0.5px solid ${day.isToday ? 'var(--pc-brand)' : 'var(--pc-hair)'}`,
                       display: 'flex', flexDirection: 'column', gap: 7,
                     }}
                   >
@@ -301,31 +343,30 @@ export default async function KidDashboard() {
                       <span
                         style={{
                           fontSize: 10.5, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
-                          color: isToday ? 'var(--pc-brand-deep)' : 'var(--pc-ink3)',
+                          color: day.isToday ? 'var(--pc-brand-deep)' : 'var(--pc-ink3)',
                         }}
                       >
-                        {d}
+                        {day.dayName}
                       </span>
                       <span
                         className="font-serif font-medium text-[15px]"
-                        style={{ color: isToday ? 'var(--pc-brand-deep)' : 'var(--pc-ink)' }}
+                        style={{ color: day.isToday ? 'var(--pc-brand-deep)' : 'var(--pc-ink)' }}
                       >
-                        {weekDates[i]}
+                        {day.date}
                       </span>
                     </div>
-                    {/* Thin progress bar */}
                     <div style={{ height: 4, background: 'var(--pc-hair-soft)', borderRadius: 99 }}>
                       <div
                         style={{
                           width: `${pct * 100}%`, height: '100%', borderRadius: 99,
-                          background: isToday
+                          background: day.isToday
                             ? 'var(--pc-brand)'
-                            : pct === 1 ? 'var(--pc-ok)' : pct >= 0.6 ? 'var(--pc-brand)' : 'var(--pc-ink4)',
+                            : pct >= 1 ? 'var(--pc-ok)' : pct >= 0.6 ? 'var(--pc-brand)' : 'var(--pc-ink4)',
                         }}
                       />
                     </div>
                     <span style={{ fontSize: 10.5, color: 'var(--pc-ink2)' }}>
-                      {i > todayIndex ? '—' : `${weekCompletion[i]}/5`}
+                      {day.total === 0 ? '—' : `${day.done}/${day.total}`}
                     </span>
                   </div>
                 )
@@ -375,128 +416,70 @@ export default async function KidDashboard() {
         {/* ══ RIGHT rail ═══════════════════════════════════════ */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
 
-          {/* Streaks */}
+          {/* Streaks — real data */}
           <Card pad={16}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
               <span className="font-serif font-medium text-[16px] text-ink">Streaks</span>
-              <span className="font-mono text-[11px] text-ink-3">this month</span>
+              <span className="font-mono text-[11px] text-ink-3">current</span>
             </div>
-            {/* TODO: replace with real streaks table query */}
-            {[
-              { name: 'Medicine — Telma 40', n: 22, max: 30, icon: '💊', color: 'var(--pc-brand)' },
-              { name: 'Morning walk',        n: 6,  max: 7,  icon: '🚶', color: 'var(--pc-ok)' },
-              { name: 'Evening exercise',    n: 4,  max: 7,  icon: '🧘', color: 'var(--pc-brand)' },
-              { name: 'Sleep by 11 PM',      n: 2,  max: 7,  icon: '🌙', color: 'var(--pc-warn)' },
-            ].map((s, i) => (
-              <div
-                key={s.name}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 0',
-                  borderTop: i ? '0.5px dashed var(--pc-hair)' : 'none',
-                }}
-              >
-                <div
-                  style={{
-                    width: 30, height: 30, borderRadius: 8,
-                    background: 'var(--pc-brand-tint)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 14,
-                  }}
-                >
-                  {s.icon}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
+
+            {!streakRows || streakRows.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--pc-ink3)', fontSize: 13 }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>🔥</div>
+                No streaks yet — complete tasks to start building them!
+              </div>
+            ) : (
+              (streakRows as unknown as { current_streak: number; longest_streak: number; tasks: { title: string; type: string } | null }[]).map((s, i) => {
+                const taskTypeIcons: Record<string, string> = { walk: '🚶', diet: '🍽️', medicine: '💊', sleep: '😴', exercise: '💪', custom: '✅' }
+                const title = s.tasks?.title ?? 'Task'
+                const icon  = taskTypeIcons[s.tasks?.type ?? ''] ?? '✅'
+                const pct   = s.longest_streak > 0 ? s.current_streak / s.longest_streak : 1
+                return (
                   <div
+                    key={i}
                     style={{
-                      fontSize: 12.5, fontWeight: 500,
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 0',
+                      borderTop: i ? '0.5px dashed var(--pc-hair)' : 'none',
                     }}
                   >
-                    {s.name}
-                  </div>
-                  <div style={{ height: 3, background: 'var(--pc-surface2)', borderRadius: 99, marginTop: 4 }}>
                     <div
                       style={{
-                        width: `${(s.n / s.max) * 100}%`,
-                        height: '100%', borderRadius: 99, background: s.color,
+                        width: 30, height: 30, borderRadius: 8,
+                        background: 'var(--pc-brand-tint)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 14,
                       }}
-                    />
+                    >
+                      {icon}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 12.5, fontWeight: 500,
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {title}
+                      </div>
+                      <div style={{ height: 3, background: 'var(--pc-surface2)', borderRadius: 99, marginTop: 4 }}>
+                        <div
+                          style={{
+                            width: `${Math.min(pct, 1) * 100}%`,
+                            height: '100%', borderRadius: 99,
+                            background: s.current_streak >= 7 ? 'var(--pc-ok)' : 'var(--pc-brand)',
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                      <span className="font-serif font-medium text-[18px] text-ink">{s.current_streak}</span>
+                      <span className="text-[10.5px] text-ink-3">din</span>
+                    </div>
                   </div>
-                </div>
-                <div style={{ textAlign: 'right', display: 'flex', alignItems: 'baseline', gap: 3 }}>
-                  <span className="font-serif font-medium text-[18px] text-ink">{s.n}</span>
-                  <span className="text-[10.5px] text-ink-3">/ {s.max}</span>
-                </div>
-              </div>
-            ))}
-          </Card>
-
-          {/* Health concern — saffron-tinted card */}
-          <Card
-            pad={16}
-            style={{ background: 'var(--pc-brand-tint)', border: '0.5px solid var(--pc-brand)' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <SaathiMark size={26} />
-              <div style={{ flex: 1 }}>
-                <div
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    fontSize: 10.5, fontWeight: 600, letterSpacing: '0.06em',
-                    textTransform: 'uppercase', color: 'var(--pc-brand-deep)',
-                    marginBottom: 6,
-                  }}
-                >
-                  Health concern <Dot color="var(--pc-brand)" size={4} /> medium
-                </div>
-                <div
-                  className="font-serif font-medium text-[17px] text-ink leading-tight"
-                  style={{ letterSpacing: '-0.01em' }}
-                >
-                  Low protein intake for 9 days running.
-                </div>
-                <p style={{ margin: '8px 0 0', fontSize: 12.5, lineHeight: 1.55, color: 'var(--pc-ink2)' }}>
-                  Lunches and dinners have been roti-and-sabzi only since the 3rd.
-                  Saathi has drafted a dal-and-paneer rotation for next week.
-                </p>
-                <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-                  <button className="pc-btn text-xs py-1.5 px-3">Review plan</button>
-                  <button className="pc-btn-ghost text-xs py-1.5 px-3">Mute concern</button>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Agent suggestion */}
-          <Card pad={16}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <SaathiMark size={20} />
-              <span
-                style={{
-                  fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
-                  textTransform: 'uppercase', color: 'var(--pc-ink3)',
-                }}
-              >
-                Saathi suggests
-              </span>
-            </div>
-            <div
-              className="font-serif font-medium text-[16px] text-ink leading-tight"
-              style={{ letterSpacing: '-0.01em' }}
-            >
-              Add a 10-min breathing exercise before bed.
-            </div>
-            <p style={{ margin: '6px 0 0', fontSize: 12.5, lineHeight: 1.5, color: 'var(--pc-ink2)' }}>
-              Papa's sleep streak is at 2/7. Pranayama before bed has the
-              strongest evidence for hypertension — and it doesn't aggravate
-              his knee.
-            </p>
-            <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-              <button className="pc-btn text-xs py-1.5 px-3">✓ Approve</button>
-              <button className="pc-btn-ghost text-xs py-1.5 px-3">Edit</button>
-              <button className="pc-btn-ghost text-xs py-1.5 px-3" style={{ color: 'var(--pc-ink3)' }}>Dismiss</button>
-            </div>
+                )
+              })
+            )}
           </Card>
 
           {/* Family panel */}

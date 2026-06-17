@@ -339,22 +339,23 @@ export default async function ParentDashboard() {
           }}
         >
           {[
-            { label: 'Aaj',      icon: '☀️',  active: true },
-            { label: 'Itihaas', icon: '📋',  active: false },
-            { label: 'Saathi',  icon: '✨',  active: false },
-            { label: 'Profile', icon: '👤',  active: false },
-          ].map(({ label, icon, active }) => (
-            <div
+            { label: 'Aaj',     icon: '☀️', href: '/parent/dashboard', active: true  },
+            { label: 'Itihaas', icon: '📋', href: '/parent/itihaas',   active: false },
+            { label: 'Profile', icon: '👤', href: '/parent/profile',   active: false },
+          ].map(({ label, icon, href, active }) => (
+            <Link
               key={label}
+              href={href}
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                 color: active ? 'var(--pc-brand)' : 'var(--pc-ink3)',
-                cursor: 'pointer',
+                textDecoration: 'none',
+                flex: 1,
               }}
             >
               <span style={{ fontSize: 24 }}>{icon}</span>
               <span style={{ fontSize: 11.5, fontWeight: active ? 700 : 500 }}>{label}</span>
-            </div>
+            </Link>
           ))}
         </div>
 
