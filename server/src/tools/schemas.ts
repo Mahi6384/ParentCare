@@ -1,17 +1,14 @@
-import type Anthropic from '@anthropic-ai/sdk'
+type Tool = {
+  name: string
+  description: string
+  input_schema: {
+    type: 'object'
+    properties: Record<string, unknown>
+    required: string[]
+  }
+}
 
-/*
-  All tool schemas passed to claude.messages.create({ tools }).
-  Claude reads these to know what tools exist, what inputs they need,
-  and when it makes sense to call them.
-
-  JSON Schema rules:
-  - type: 'object' at the top level (always)
-  - properties: each input field with its type + description
-  - required: array of field names Claude MUST provide
-*/
-
-export const tools: Anthropic.Tool[] = [
+export const tools: Tool[] = [
   // ── READ TOOLS ────────────────────────────────────────────────────────────
 
   {

@@ -1,17 +1,26 @@
-import { Queue } from 'bullmq'
-import IORedis from 'ioredis'
+import { Queue, type ConnectionOptions } from 'bullmq'
 
 const redisUrl = process.env.UPSTASH_REDIS_URL!
 
 /*
   Upstash Redis uses TLS — the URL starts with rediss:// (double s).
-  ioredis needs maxRetriesPerRequest: null for BullMQ — without this,
-  BullMQ's blocking commands will throw after the default retry limit.
+  We parse the URL into host/port/password so we stay within BullMQ's
+  own ioredis types and avoid the dual-ioredis version conflict.
 */
-export const connection = new IORedis(redisUrl, {
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-})
+function parseRedisUrl(url: string): ConnectionOptions {
+  const u = new URL(url)
+  return {
+    host:                 u.hostname,
+    port:                 parseInt(u.port || '6379', 10),
+    password:             u.password || undefined,
+    username:             u.username || undefined,
+    tls:                  url.startsWith('rediss://') ? {} : undefined,
+    maxRetriesPerRequest: null,
+    enableReadyCheck:     false,
+  } as ConnectionOptions
+}
+
+export const connection = parseRedisUrl(redisUrl)
 
 /*
   The verify queue holds jobs that tell the worker to run the
