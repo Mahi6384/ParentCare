@@ -14,19 +14,20 @@ import SaathiMark from '@/components/ui/SaathiMark'
 type TabId = 'overview' | 'tasks' | 'concerns' | 'report' | 'family'
 
 interface KidNavBarProps {
-  userName: string   // displayed as "for Rohan" in sub-label
+  userName:  string
   activeTab: TabId
+  badge?:    number  // unread count shown on the Concerns tab
 }
 
-const NAV_ITEMS: { id: TabId; label: string; href: string; badge?: number }[] = [
+const NAV_ITEMS: { id: TabId; label: string; href: string }[] = [
   { id: 'overview',  label: 'Overview',      href: '/kid/dashboard' },
   { id: 'tasks',     label: 'Tasks',         href: '/kid/tasks'     },
-  { id: 'concerns',  label: 'Concerns',      href: '/kid/concerns', badge: 2 },
+  { id: 'concerns',  label: 'Concerns',      href: '/kid/concerns' },
   { id: 'report',    label: 'Weekly Report', href: '/kid/report'    },
   { id: 'family',    label: 'Family',        href: '/kid/family'    },
 ]
 
-export default function KidNavBar({ userName, activeTab }: KidNavBarProps) {
+export default function KidNavBar({ userName, activeTab, badge }: KidNavBarProps) {
   return (
     <div
       style={{
@@ -55,8 +56,9 @@ export default function KidNavBar({ userName, activeTab }: KidNavBarProps) {
 
       {/* Nav items */}
       <div style={{ display: 'flex', gap: 4 }}>
-        {NAV_ITEMS.map(({ id, label, href, badge }) => {
-          const active = id === activeTab
+        {NAV_ITEMS.map(({ id, label, href }) => {
+          const active      = id === activeTab
+          const badgeCount  = id === 'concerns' ? badge : undefined
           return (
             <Link
               key={id}
@@ -74,7 +76,7 @@ export default function KidNavBar({ userName, activeTab }: KidNavBarProps) {
               }}
             >
               {label}
-              {badge && (
+              {badgeCount && (
                 <span
                   style={{
                     fontSize: 10, fontWeight: 600, padding: '1px 5px',
@@ -82,7 +84,7 @@ export default function KidNavBar({ userName, activeTab }: KidNavBarProps) {
                     color: '#fff', lineHeight: 1.4,
                   }}
                 >
-                  {badge}
+                  {badgeCount}
                 </span>
               )}
             </Link>

@@ -23,8 +23,19 @@ export interface GetHealthProfileInput {
   parent_id: string
 }
 
+export interface ExerciseStepInput {
+  section:      string
+  name:         string
+  reps?:        number
+  duration_sec?: number
+  rest_sec?:    number
+  modification?: string
+}
+
 export interface GenerateExerciseRoutineInput {
-  parent_id: string
+  task_instance_id: string
+  parent_id:        string
+  steps:            ExerciseStepInput[]
 }
 
 export interface GenerateMealPlanInput {
