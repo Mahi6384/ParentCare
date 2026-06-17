@@ -162,13 +162,6 @@ export async function executeTool(
 
             // Increment streak on pass
             if (result === "passed") {
-                const { data: streak } = await supabase
-                    .from("streaks")
-                    .select("current_streak, longest_streak")
-                    .eq("task_instance_id_placeholder", task_instance_id) // join via task_id below
-                    .single();
-
-                // Get task_id from instance first, then update streak
                 const { data: inst } = await supabase
                     .from("task_instances")
                     .select("task_id, parent_id")
@@ -176,29 +169,29 @@ export async function executeTool(
                     .single();
 
                 if (inst) {
-                    const { data: existingStreak } = await supabase
+                    const { data: existing } = await supabase
                         .from("streaks")
                         .select("current_streak, longest_streak")
                         .eq("task_id", inst.task_id)
                         .eq("parent_id", inst.parent_id)
-                        .single();
+                        .maybeSingle();
 
-                    if (existingStreak) {
-                        const next = existingStreak.current_streak + 1;
-                        const longest = Math.max(
-                            next,
-                            existingStreak.longest_streak,
-                        );
+                    const next    = (existing?.current_streak ?? 0) + 1;
+                    const longest = Math.max(next, existing?.longest_streak ?? 0);
 
-                        await supabase
-                            .from("streaks")
-                            .update({
+                    // upsert handles both first-time (no row yet) and subsequent completions
+                    await supabase
+                        .from("streaks")
+                        .upsert(
+                            {
+                                task_id:        inst.task_id,
+                                parent_id:      inst.parent_id,
                                 current_streak: next,
                                 longest_streak: longest,
-                            })
-                            .eq("task_id", inst.task_id)
-                            .eq("parent_id", inst.parent_id);
-                    }
+                                updated_at:     new Date().toISOString(),
+                            },
+                            { onConflict: "task_id,parent_id" },
+                        );
                 }
             }
 
