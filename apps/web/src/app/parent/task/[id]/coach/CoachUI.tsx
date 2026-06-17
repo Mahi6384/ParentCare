@@ -35,7 +35,9 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
   const [currentIdx, setCurrentIdx] = useState(0)
   const [restMode, setRestMode]     = useState(false)
   const [restCount, setRestCount]   = useState(0)
-  const restTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [repAdjustment, setRepAdjustment] = useState(0)
+  const restTimer      = useRef<ReturnType<typeof setInterval> | null>(null)
+  const overrideRestRef = useRef<number | null>(null)
 
   const step = steps[currentIdx]
 
@@ -56,10 +58,15 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
     return () => { window.speechSynthesis?.cancel() }
   }, [currentIdx, step, speak])
 
+  // Reset rep adjustment when the step changes
+  useEffect(() => { setRepAdjustment(0) }, [currentIdx])
+
   // ── Rest countdown ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!restMode) return
-    const secs = step.rest_sec ?? 15
+    // overrideRestRef is set by "Aaram chahiye" to force 30s regardless of step.rest_sec
+    const secs = overrideRestRef.current !== null ? overrideRestRef.current : (step.rest_sec ?? 15)
+    overrideRestRef.current = null
     setRestCount(secs)
     restTimer.current = setInterval(() => {
       setRestCount(c => {
@@ -104,9 +111,20 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
     router.push('/parent/dashboard')
   }
 
-  const elapsedMin = Math.round((currentIdx / total) * 20)
-  const saathiLine = SAATHI_LINES[step.name] ??
-    `${step.name} — dheere se karein, koi jaldi nahi.`
+  function handleReduceReps() {
+    setRepAdjustment(a => a - 2)
+  }
+
+  function handleNeedRest() {
+    window.speechSynthesis?.cancel()
+    if (restTimer.current) clearInterval(restTimer.current)
+    overrideRestRef.current = 30
+    setRestMode(true)
+  }
+
+  const elapsedMin  = Math.round((currentIdx / total) * 20)
+  const saathiLine  = SAATHI_LINES[step.name] ?? `${step.name} — dheere se karein, koi jaldi nahi.`
+  const displayReps = step.reps != null ? Math.max(1, step.reps + repAdjustment) : undefined
 
   // ── Rest screen ─────────────────────────────────────────────────────────
   if (restMode) {
@@ -230,8 +248,8 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
 
           {/* Metrics chips */}
           <div style={{ display: 'flex', gap: 10 }}>
-            {step.reps != null && (
-              <MetricChip label="REPS" value={String(step.reps)} />
+            {displayReps != null && (
+              <MetricChip label="REPS" value={String(displayReps)} />
             )}
             {step.duration_sec != null && (
               <MetricChip label="TIME" value={`${step.duration_sec}s`} />
@@ -297,9 +315,9 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
 
         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
           {[
-            { label: 'Reps kam karein', action: undefined },
-            { label: 'Aaram chahiye',   action: undefined },
-            { label: 'Skip karein',     action: handleSkip },
+            { label: 'Reps kam karein', action: handleReduceReps },
+            { label: 'Aaram chahiye',   action: handleNeedRest  },
+            { label: 'Skip karein',     action: handleSkip      },
           ].map(({ label, action }) => (
             <button
               key={label}

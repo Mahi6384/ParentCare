@@ -12,18 +12,17 @@ interface Props {
 }
 
 export default function CoachLoader({ instanceId, taskTitle, mockSteps }: Props) {
-  const [steps, setSteps] = useState<ExerciseStep[] | null>(null)
+  const [steps, setSteps]     = useState<ExerciseStep[] | null>(null)
   const [timedOut, setTimedOut] = useState(false)
+  const [usedMock, setUsedMock] = useState(false)
 
   useEffect(() => {
-    // Trigger the agent
     fetch('/api/exercise-coach/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ taskInstanceId: instanceId }),
     }).catch(() => {})
 
-    // Poll exercise_routines every 3s until a routine appears
     const supabase = createClient()
     const poll = setInterval(async () => {
       const { data: routine } = await supabase
@@ -42,20 +41,62 @@ export default function CoachLoader({ instanceId, taskTitle, mockSteps }: Props)
       }
     }, 3000)
 
-    // After 45s, fall back to MOCK_STEPS — Gemini might be overloaded
+    // After 45s show an error — don't silently swap in mock data
     const timeout = setTimeout(() => {
       clearInterval(poll)
       setTimedOut(true)
-      setSteps(mockSteps)
     }, 45000)
 
     return () => {
       clearInterval(poll)
       clearTimeout(timeout)
     }
-  }, [instanceId, mockSteps])
+  }, [instanceId])
 
-  // Still loading — show Saathi thinking screen
+  // Timeout — show explicit error with opt-in fallback
+  if (timedOut && !steps) {
+    return (
+      <div style={{
+        minHeight: '100vh', background: 'var(--pc-bg)',
+        color: 'var(--pc-ink)', fontFamily: 'var(--pc-body)',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        padding: 32, maxWidth: 430, margin: '0 auto', gap: 16, textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 40 }}>⚠️</div>
+        <div className="font-serif" style={{ fontSize: 24, lineHeight: 1.3 }}>
+          Routine nahi bana
+        </div>
+        <div style={{ fontSize: 15, color: 'var(--pc-ink3)', lineHeight: 1.5 }}>
+          Saathi abhi busy hai. Aap default routine se shuru kar sakte hain, ya baad mein try karein.
+        </div>
+        <button
+          onClick={() => { setUsedMock(true); setSteps(mockSteps) }}
+          style={{
+            marginTop: 8, padding: '14px 28px',
+            background: 'var(--pc-brand)', color: '#fff', border: 'none',
+            borderRadius: 14, fontSize: 16, fontWeight: 700,
+            fontFamily: 'var(--pc-body)', cursor: 'pointer',
+          }}
+        >
+          Default routine use karein
+        </button>
+        <button
+          onClick={() => { setTimedOut(false) }}
+          style={{
+            padding: '10px 20px',
+            background: 'none', color: 'var(--pc-ink3)',
+            border: '0.5px solid var(--pc-hair)', borderRadius: 10,
+            fontSize: 14, fontFamily: 'var(--pc-body)', cursor: 'pointer',
+          }}
+        >
+          Wapas jaao
+        </button>
+      </div>
+    )
+  }
+
+  // Still loading
   if (!steps) {
     return (
       <div style={{
@@ -94,7 +135,7 @@ export default function CoachLoader({ instanceId, taskTitle, mockSteps }: Props)
       instanceId={instanceId}
       taskTitle={taskTitle}
       steps={steps}
-      usedMock={timedOut}
+      usedMock={usedMock}
     />
   )
 }
