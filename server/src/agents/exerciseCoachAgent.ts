@@ -60,7 +60,7 @@ Each step needs: section, name, reps OR duration_sec, rest_sec (optional), modif
 Steps should be safe for someone's parent — conservative, encouraging, joint-friendly.`
 
   const model = genAI.getGenerativeModel({
-    model:             'gemini-3.5-flash',
+    model:             'gemini-2.5-flash',
     systemInstruction: systemPrompt,
     tools:             [{ functionDeclarations: geminiTools }],
   })

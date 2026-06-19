@@ -10,7 +10,7 @@ const supabase = createClient(
 )
 
 /*
-  runVerificationAgent — the core agentic loop, powered by Gemini 3.5 Flash.
+  runVerificationAgent — the core agentic loop, powered by Gemini 2.5 Flash.
 
   Key difference from Anthropic: Gemini doesn't accept image URLs directly.
   We fetch the photo from Supabase Storage and pass it as base64 inlineData.
@@ -44,6 +44,7 @@ export async function runVerificationAgent(
   if (!instance) throw new Error(`Task instance for submission ${submissionId} not found`)
 
   const task = instance.tasks as unknown as { title: string; type: string }
+  console.log(`[agent] loaded — task: "${task.title}" type: ${task.type} parent: ${instance.parent_id}`)
 
   // ── 2. Fetch photo as base64 ──────────────────────────────────────────────
   // Gemini requires inline image data — it can't fetch a Supabase signed URL directly.
@@ -54,9 +55,11 @@ export async function runVerificationAgent(
 
   if (!signed?.signedUrl) throw new Error('Could not generate signed URL for photo')
 
+  console.log('[agent] signed URL generated — fetching image from storage...')
   const imageRes    = await fetch(signed.signedUrl)
   const imageBuffer = await imageRes.arrayBuffer()
   const imageBase64 = Buffer.from(imageBuffer).toString('base64')
+  console.log(`[agent] image fetched — ${imageBuffer.byteLength} bytes`)
 
   // ── 3. Set up Gemini model ────────────────────────────────────────────────
   const systemPrompt = `You are Saathi, an AI health verification agent for ParentCare.
@@ -85,12 +88,13 @@ Your job is to verify that a parent has completed their assigned health task by 
 - update_task_result MUST be called before you finish.`
 
   const model = genAI.getGenerativeModel({
-    model:             'gemini-3.5-flash',
+    model:             'gemini-2.5-flash',
     systemInstruction: systemPrompt,
     tools:             [{ functionDeclarations: geminiTools }],
   })
 
   // ── 4. Tool-use loop ──────────────────────────────────────────────────────
+  console.log('[agent] Gemini model ready — starting chat...')
   const chat = model.startChat()
 
   const initialMessage = [
@@ -113,7 +117,9 @@ Start by checking recent history, then analyse the photo, then record the result
   let response: Awaited<ReturnType<typeof chat.sendMessage>> | undefined
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
+      console.log(`[agent] attempt ${attempt}: sending message to Gemini...`)
       response = await chat.sendMessage(initialMessage)
+      console.log('[agent] Gemini responded — checking for tool calls...')
       break
     } catch (err: unknown) {
       const msg = (err as Error).message ?? ''
@@ -142,12 +148,16 @@ Start by checking recent history, then analyse the photo, then record the result
         toolsCalledThisRun.push(call.name)
         if (call.name === 'update_task_result') resultRecorded = true
 
+        console.log(`[agent] → tool: ${call.name} args: ${JSON.stringify(call.args).slice(0, 200)}`)
+
         let result: unknown
         try {
           result = await executeTool(call.name, call.args as Record<string, unknown>)
         } catch (err) {
           result = { error: (err as Error).message }
         }
+
+        console.log(`[agent] ← result: ${JSON.stringify(result).slice(0, 200)}`)
 
         return {
           functionResponse: {
@@ -158,6 +168,7 @@ Start by checking recent history, then analyse the photo, then record the result
       })
     )
 
+    console.log('[agent] tool results sent — waiting for next Gemini response...')
     response = await chat.sendMessage(functionResponses)
   }
 
