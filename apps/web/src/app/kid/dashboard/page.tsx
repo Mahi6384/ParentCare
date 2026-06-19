@@ -256,6 +256,7 @@ export default async function KidDashboard() {
     : { data: [] }
 
   const completedToday = feed.filter(f => f.tone === 'ok' || f.tone === 'warn').length
+  const lastVerifiedItem = [...feed].reverse().find(f => f.tone === 'ok' || f.tone === 'warn')
 
   return (
     <div
@@ -384,10 +385,18 @@ export default async function KidDashboard() {
                 Today — verification feed
               </h2>
               <div style={{ fontSize: 12, color: 'var(--pc-ink3)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Dot color="var(--pc-ok)" size={5} />
-                Live · last reasoned{' '}
-                <span className="font-mono" style={{ color: 'var(--pc-ink2)' }}>00:02:14</span>
-                {' '}ago
+                {lastVerifiedItem ? (
+                  <>
+                    <Dot color="var(--pc-ok)" size={5} />
+                    Last verified ·{' '}
+                    <span className="font-mono" style={{ color: 'var(--pc-ink2)' }}>{lastVerifiedItem.time}</span>
+                  </>
+                ) : (
+                  <>
+                    <Dot color="var(--pc-ink3)" size={5} />
+                    Abhi tak koi verification nahi
+                  </>
+                )}
               </div>
             </div>
 

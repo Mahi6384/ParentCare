@@ -46,6 +46,23 @@ export default async function ResultPage({ params }: Props) {
   const streak = streakRow?.current_streak ?? 0
   const passed = !aiResult || aiResult.result === 'passed'
 
+  // Fetch the kid's name to personalise the Saathi message
+  const { data: familyData } = await supabase
+    .from('families')
+    .select('users!families_kid_id_fkey(name)')
+    .eq('parent_id', user!.id)
+    .single()
+  const kidName = (familyData?.users as unknown as { name: string } | null)?.name ?? 'beta'
+
+  // photo_url is a storage path, not a public URL — generate a signed URL so the browser can load it
+  let photoUrl: string | null = null
+  if (submission?.photo_url) {
+    const { data: signed } = await supabase.storage
+      .from('photos')
+      .createSignedUrl(submission.photo_url, 60 * 60)
+    photoUrl = signed?.signedUrl ?? null
+  }
+
   return (
     <div style={{
       minHeight: '100vh', background: 'var(--pc-bg)',
@@ -64,10 +81,10 @@ export default async function ResultPage({ params }: Props) {
       </div>
 
       {/* Submitted photo */}
-      {submission?.photo_url && (
+      {photoUrl && (
         <div style={{ margin: '20px 22px 0', borderRadius: 16, overflow: 'hidden' }}>
           <img
-            src={submission.photo_url}
+            src={photoUrl}
             alt="Submitted photo"
             style={{ width: '100%', height: 200, objectFit: 'cover', display: 'block' }}
           />
@@ -135,7 +152,7 @@ export default async function ResultPage({ params }: Props) {
               S
             </div>
             <div style={{ fontSize: 14, color: 'var(--pc-brand-deep)', fontStyle: 'italic', lineHeight: 1.55 }}>
-              "Rohan ko aapki photo bhej di hai. Bahut achha kiya aaj!"
+              {`"${kidName} ko aapki photo bhej di hai. Bahut achha kiya aaj!"`}
             </div>
           </div>
         </div>

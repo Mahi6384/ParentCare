@@ -31,12 +31,21 @@ export default async function VerifyPage({ params }: Props) {
     .limit(1)
     .single()
 
+  // photo_url is a storage path, not a public URL — generate a signed URL so the browser can load it
+  let photoUrl: string | null = null
+  if (submission?.photo_url) {
+    const { data: signed } = await supabase.storage
+      .from('photos')
+      .createSignedUrl(submission.photo_url, 60 * 60)
+    photoUrl = signed?.signedUrl ?? null
+  }
+
   return (
     <VerifyScreen
       instanceId={id}
       taskTitle={task.title}
       taskType={task.type}
-      photoUrl={submission?.photo_url ?? null}
+      photoUrl={photoUrl}
       submissionId={submission?.id ?? null}
     />
   )
