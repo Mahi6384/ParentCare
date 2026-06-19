@@ -33,6 +33,7 @@ export async function runExerciseCoachAgent(
   if (!instance) throw new Error(`Task instance ${taskInstanceId} not found`)
 
   const task = instance.tasks as unknown as { title: string; type: string }
+  console.log(`[coach-agent] loaded — task: "${task.title}" parent: ${instance.parent_id}`)
 
   // ── 2. Set up Gemini model ────────────────────────────────────────────────────
   const systemPrompt = `You are Saathi, an AI exercise coach for ParentCare.
@@ -71,6 +72,7 @@ Steps should be safe for someone's parent — conservative, encouraging, joint-f
   let response: Awaited<ReturnType<typeof chat.sendMessage>> | undefined
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
+      console.log(`[coach-agent] attempt ${attempt}: sending message to Gemini...`)
       response = await chat.sendMessage(
         `Generate an exercise routine for this session.
 
@@ -80,6 +82,7 @@ Task Instance ID: ${instance.id}
 
 Start by reading the health profile, then generate and save the routine.`
       )
+      console.log('[coach-agent] Gemini responded — checking for tool calls...')
       break
     } catch (err: unknown) {
       const msg = (err as Error).message ?? ''
@@ -106,12 +109,16 @@ Start by reading the health profile, then generate and save the routine.`
         toolsCalledThisRun.push(call.name)
         if (call.name === 'generate_exercise_routine') routineGenerated = true
 
+        console.log(`[coach-agent] → tool: ${call.name} args: ${JSON.stringify(call.args).slice(0, 200)}`)
+
         let result: unknown
         try {
           result = await executeTool(call.name, call.args as Record<string, unknown>)
         } catch (err) {
           result = { error: (err as Error).message }
         }
+
+        console.log(`[coach-agent] ← result: ${JSON.stringify(result).slice(0, 200)}`)
 
         return {
           functionResponse: {
@@ -122,6 +129,7 @@ Start by reading the health profile, then generate and save the routine.`
       })
     )
 
+    console.log('[coach-agent] tool results sent — waiting for next Gemini response...')
     response = await chat.sendMessage(functionResponses)
   }
 
