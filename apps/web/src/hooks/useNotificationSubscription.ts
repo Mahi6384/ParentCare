@@ -35,8 +35,11 @@ export function useNotificationSubscription() {
 
       // 6. Save to Supabase — upsert so re-subscribing a device updates the row
       const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
       await supabase.from('push_subscriptions').upsert(
-        { endpoint, keys_json: keys },
+        { user_id: user.id, endpoint, keys_json: keys },
         { onConflict: 'user_id' }
       )
     }
