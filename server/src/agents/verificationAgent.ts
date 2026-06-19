@@ -1,13 +1,13 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
-import { createClient } from '@supabase/supabase-js'
-import { geminiTools } from '../tools/geminiSchemas'
-import { executeTool } from '../tools/executor'
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { createClient } from "@supabase/supabase-js";
+import { geminiTools } from "../tools/geminiSchemas";
+import { executeTool } from "../tools/executor";
 
-const genAI    = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 /*
   runVerificationAgent — the core agentic loop, powered by Gemini 2.5 Flash.
@@ -22,47 +22,53 @@ const supabase = createClient(
   - Repeat until functionCalls() is empty (model finished reasoning)
 */
 export async function runVerificationAgent(
-  submissionId: string,
-  storagePath:  string
+    submissionId: string,
+    storagePath: string,
 ): Promise<void> {
+    // ── 1. Load context from DB ───────────────────────────────────────────────
+    const { data: submission } = await supabase
+        .from("submissions")
+        .select("id, task_instance_id, photo_url, submitted_at")
+        .eq("id", submissionId)
+        .single();
 
-  // ── 1. Load context from DB ───────────────────────────────────────────────
-  const { data: submission } = await supabase
-    .from('submissions')
-    .select('id, task_instance_id, photo_url, submitted_at')
-    .eq('id', submissionId)
-    .single()
+    if (!submission) throw new Error(`Submission ${submissionId} not found`);
 
-  if (!submission) throw new Error(`Submission ${submissionId} not found`)
+    const { data: instance } = await supabase
+        .from("task_instances")
+        .select("id, parent_id, due_at, tasks ( title, type )")
+        .eq("id", submission.task_instance_id)
+        .single();
 
-  const { data: instance } = await supabase
-    .from('task_instances')
-    .select('id, parent_id, due_at, tasks ( title, type )')
-    .eq('id', submission.task_instance_id)
-    .single()
+    if (!instance)
+        throw new Error(
+            `Task instance for submission ${submissionId} not found`,
+        );
 
-  if (!instance) throw new Error(`Task instance for submission ${submissionId} not found`)
+    const task = instance.tasks as unknown as { title: string; type: string };
+    console.log(
+        `[agent] loaded — task: "${task.title}" type: ${task.type} parent: ${instance.parent_id}`,
+    );
 
-  const task = instance.tasks as unknown as { title: string; type: string }
-  console.log(`[agent] loaded — task: "${task.title}" type: ${task.type} parent: ${instance.parent_id}`)
+    // ── 2. Fetch photo as base64 ──────────────────────────────────────────────
+    // Gemini requires inline image data — it can't fetch a Supabase signed URL directly.
+    const { data: signed } = await supabase.storage
+        .from("photos")
+        .createSignedUrl(storagePath, 60 * 10);
 
-  // ── 2. Fetch photo as base64 ──────────────────────────────────────────────
-  // Gemini requires inline image data — it can't fetch a Supabase signed URL directly.
-  const { data: signed } = await supabase
-    .storage
-    .from('photos')
-    .createSignedUrl(storagePath, 60 * 10)
+    if (!signed?.signedUrl)
+        throw new Error("Could not generate signed URL for photo");
 
-  if (!signed?.signedUrl) throw new Error('Could not generate signed URL for photo')
+    console.log(
+        "[agent] signed URL generated — fetching image from storage...",
+    );
+    const imageRes = await fetch(signed.signedUrl);
+    const imageBuffer = await imageRes.arrayBuffer();
+    const imageBase64 = Buffer.from(imageBuffer).toString("base64");
+    console.log(`[agent] image fetched — ${imageBuffer.byteLength} bytes`);
 
-  console.log('[agent] signed URL generated — fetching image from storage...')
-  const imageRes    = await fetch(signed.signedUrl)
-  const imageBuffer = await imageRes.arrayBuffer()
-  const imageBase64 = Buffer.from(imageBuffer).toString('base64')
-  console.log(`[agent] image fetched — ${imageBuffer.byteLength} bytes`)
-
-  // ── 3. Set up Gemini model ────────────────────────────────────────────────
-  const systemPrompt = `You are Saathi, an AI health verification agent for ParentCare.
+    // ── 3. Set up Gemini model ────────────────────────────────────────────────
+    const systemPrompt = `You are Saathi, an AI health verification agent for ParentCare.
 
 Your job is to verify that a parent has completed their assigned health task by analysing their submitted photo, then record a result and notify the kid.
 
@@ -85,22 +91,22 @@ Your job is to verify that a parent has completed their assigned health task by 
 
 ## Rules
 - Do not fabricate details about the photo that you cannot see.
-- update_task_result MUST be called before you finish.`
+- update_task_result MUST be called before you finish.`;
 
-  const model = genAI.getGenerativeModel({
-    model:             'gemini-2.5-flash',
-    systemInstruction: systemPrompt,
-    tools:             [{ functionDeclarations: geminiTools }],
-  })
+    const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        systemInstruction: systemPrompt,
+        tools: [{ functionDeclarations: geminiTools }],
+    });
 
-  // ── 4. Tool-use loop ──────────────────────────────────────────────────────
-  console.log('[agent] Gemini model ready — starting chat...')
-  const chat = model.startChat()
+    // ── 4. Tool-use loop ──────────────────────────────────────────────────────
+    console.log("[agent] Gemini model ready — starting chat...");
+    const chat = model.startChat();
 
-  const initialMessage = [
-    { inlineData: { data: imageBase64, mimeType: 'image/jpeg' } },
-    {
-      text: `Please verify this submission.
+    const initialMessage = [
+        { inlineData: { data: imageBase64, mimeType: "image/jpeg" } },
+        {
+            text: `Please verify this submission.
 
 Task: "${task.title}" (type: ${task.type})
 Parent ID: ${instance.parent_id}
@@ -110,86 +116,103 @@ Due at: ${instance.due_at}
 Submitted at: ${submission.submitted_at}
 
 Start by checking recent history, then analyse the photo, then record the result.`,
-    },
-  ]
+        },
+    ];
 
-  // Retry up to 3 times on 503 (free-tier overload) with 6s backoff
-  let response: Awaited<ReturnType<typeof chat.sendMessage>> | undefined
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      console.log(`[agent] attempt ${attempt}: sending message to Gemini...`)
-      response = await chat.sendMessage(initialMessage)
-      console.log('[agent] Gemini responded — checking for tool calls...')
-      break
-    } catch (err: unknown) {
-      const msg = (err as Error).message ?? ''
-      if (attempt < 3 && msg.includes('503')) {
-        console.log(`[agent] 503 on attempt ${attempt}, retrying in 6s...`)
-        await new Promise(r => setTimeout(r, 6000))
-        continue
-      }
-      throw err
-    }
-  }
-
-  if (!response) throw new Error('No response from Gemini after 3 attempts')
-
-  const toolsCalledThisRun: string[] = []
-  let resultRecorded = false
-
-  while (true) {
-    const calls = response.response.functionCalls()
-
-    // No function calls → model finished reasoning
-    if (!calls || calls.length === 0) break
-
-    const functionResponses = await Promise.all(
-      calls.map(async (call) => {
-        toolsCalledThisRun.push(call.name)
-        if (call.name === 'update_task_result') resultRecorded = true
-
-        console.log(`[agent] → tool: ${call.name} args: ${JSON.stringify(call.args).slice(0, 200)}`)
-
-        let result: unknown
+    // Retry up to 3 times on 503 (free-tier overload) with 6s backoff
+    let response: Awaited<ReturnType<typeof chat.sendMessage>> | undefined;
+    for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          result = await executeTool(call.name, call.args as Record<string, unknown>)
-        } catch (err) {
-          result = { error: (err as Error).message }
+            console.log(
+                `[agent] attempt ${attempt}: sending message to Gemini...`,
+            );
+            response = await chat.sendMessage(initialMessage);
+            console.log(
+                "[agent] Gemini responded — checking for tool calls...",
+            );
+            break;
+        } catch (err: unknown) {
+            const msg = (err as Error).message ?? "";
+            if (attempt < 3 && msg.includes("503")) {
+                console.log(
+                    `[agent] 503 on attempt ${attempt}, retrying in 6s...`,
+                );
+                await new Promise((r) => setTimeout(r, 6000));
+                continue;
+            }
+            throw err;
         }
+    }
 
-        console.log(`[agent] ← result: ${JSON.stringify(result).slice(0, 200)}`)
+    if (!response) throw new Error("No response from Gemini after 3 attempts");
 
-        return {
-          functionResponse: {
-            name:     call.name,
-            response: { result },
-          },
-        }
-      })
-    )
+    const toolsCalledThisRun: string[] = [];
+    let resultRecorded = false;
 
-    console.log('[agent] tool results sent — waiting for next Gemini response...')
-    response = await chat.sendMessage(functionResponses)
-  }
+    while (true) {
+        const calls = response.response.functionCalls();
 
-  // ── 5. Safety net ─────────────────────────────────────────────────────────
-  if (!resultRecorded) {
-    console.error(`[agent] update_task_result never called for submission ${submissionId}`)
-    await supabase
-      .from('task_instances')
-      .update({ status: 'flagged', updated_at: new Date().toISOString() })
-      .eq('id', instance.id)
-  }
+        // No function calls → model finished reasoning
+        if (!calls || calls.length === 0) break;
 
-  // ── 6. Audit log ──────────────────────────────────────────────────────────
-  await supabase
-    .from('agent_decisions')
-    .insert({
-      loop_type:    'verification',
-      parent_id:    instance.parent_id,
-      tools_called: toolsCalledThisRun,
-      reasoning:    response.response.text(),
-    })
+        const functionResponses = await Promise.all(
+            calls.map(async (call) => {
+                toolsCalledThisRun.push(call.name);
+                if (call.name === "update_task_result") resultRecorded = true;
 
-  console.log(`[agent] done — submission ${submissionId} — tools: ${toolsCalledThisRun.join(', ')}`)
+                console.log(
+                    `[agent] → tool: ${call.name} args: ${JSON.stringify(call.args).slice(0, 200)}`,
+                );
+
+                let result: unknown;
+                try {
+                    result = await executeTool(
+                        call.name,
+                        call.args as Record<string, unknown>,
+                    );
+                } catch (err) {
+                    result = { error: (err as Error).message };
+                }
+
+                console.log(
+                    `[agent] ← result: ${JSON.stringify(result).slice(0, 200)}`,
+                );
+
+                return {
+                    functionResponse: {
+                        name: call.name,
+                        response: { result },
+                    },
+                };
+            }),
+        );
+
+        console.log(
+            "[agent] tool results sent — waiting for next Gemini response...",
+        );
+        response = await chat.sendMessage(functionResponses);
+    }
+
+    // ── 5. Safety net ─────────────────────────────────────────────────────────
+    if (!resultRecorded) {
+        console.error(
+            `[agent] update_task_result never called for submission ${submissionId}`,
+        );
+        await supabase
+            .from("task_instances")
+            .update({ status: "flagged", updated_at: new Date().toISOString() })
+            .eq("id", instance.id);
+    }
+
+    // ── 6. Audit log ─────────────────────────────────────────────────────
+    await supabase.from("agent_decisions").insert({
+        loop_type: "verification",
+        parent_id: instance.parent_id,
+        tools_called: toolsCalledThisRun,
+        reasoning: response.response.text(),
+    });
+
+    console.log(
+        `[agent] done — submission ${submissionId} — tools: ${toolsCalledThisRun.join(", ")}`,
+    );
 }

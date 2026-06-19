@@ -8,7 +8,6 @@ interface Props {
   instanceId: string
   taskTitle:  string
   steps:      ExerciseStep[]
-  usedMock?:  boolean
 }
 
 const SECTION_DESC: Record<string, string> = {

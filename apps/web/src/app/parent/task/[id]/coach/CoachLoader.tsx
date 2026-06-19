@@ -8,13 +8,11 @@ import type { ExerciseStep } from './page'
 interface Props {
   instanceId: string
   taskTitle:  string
-  mockSteps:  ExerciseStep[]
 }
 
-export default function CoachLoader({ instanceId, taskTitle, mockSteps }: Props) {
-  const [steps, setSteps]     = useState<ExerciseStep[] | null>(null)
-  const [timedOut, setTimedOut] = useState(false)
-  const [usedMock, setUsedMock] = useState(false)
+export default function CoachLoader({ instanceId, taskTitle }: Props) {
+  const [steps, setSteps]       = useState<ExerciseStep[] | null>(null)
+  const [timedOut, setTimedOut]  = useState(false)
 
   useEffect(() => {
     fetch('/api/exercise-coach/start', {
@@ -41,11 +39,11 @@ export default function CoachLoader({ instanceId, taskTitle, mockSteps }: Props)
       }
     }, 3000)
 
-    // After 45s show an error — don't silently swap in mock data
+    // After 120s show an error — agent is taking too long
     const timeout = setTimeout(() => {
       clearInterval(poll)
       setTimedOut(true)
-    }, 45000)
+    }, 120000)
 
     return () => {
       clearInterval(poll)
@@ -53,7 +51,7 @@ export default function CoachLoader({ instanceId, taskTitle, mockSteps }: Props)
     }
   }, [instanceId])
 
-  // Timeout — show explicit error with opt-in fallback
+  // Timeout — show explicit error, let user go back
   if (timedOut && !steps) {
     return (
       <div style={{
@@ -68,26 +66,15 @@ export default function CoachLoader({ instanceId, taskTitle, mockSteps }: Props)
           Routine nahi bana
         </div>
         <div style={{ fontSize: 15, color: 'var(--pc-ink3)', lineHeight: 1.5 }}>
-          Saathi abhi busy hai. Aap default routine se shuru kar sakte hain, ya baad mein try karein.
+          Saathi abhi busy hai. Thodi der baad wapas aayein.
         </div>
         <button
-          onClick={() => { setUsedMock(true); setSteps(mockSteps) }}
+          onClick={() => window.history.back()}
           style={{
             marginTop: 8, padding: '14px 28px',
             background: 'var(--pc-brand)', color: '#fff', border: 'none',
             borderRadius: 14, fontSize: 16, fontWeight: 700,
             fontFamily: 'var(--pc-body)', cursor: 'pointer',
-          }}
-        >
-          Default routine use karein
-        </button>
-        <button
-          onClick={() => { setTimedOut(false) }}
-          style={{
-            padding: '10px 20px',
-            background: 'none', color: 'var(--pc-ink3)',
-            border: '0.5px solid var(--pc-hair)', borderRadius: 10,
-            fontSize: 14, fontFamily: 'var(--pc-body)', cursor: 'pointer',
           }}
         >
           Wapas jaao
@@ -135,7 +122,6 @@ export default function CoachLoader({ instanceId, taskTitle, mockSteps }: Props)
       instanceId={instanceId}
       taskTitle={taskTitle}
       steps={steps}
-      usedMock={usedMock}
     />
   )
 }
