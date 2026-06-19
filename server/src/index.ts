@@ -23,6 +23,8 @@ app.post('/jobs/verify', async (req, res) => {
     storagePath?: string
   }
 
+  console.log('[server] /jobs/verify hit — submissionId:', submissionId, 'storagePath:', storagePath)
+
   if (!submissionId || !storagePath) {
     res.status(400).json({ error: 'submissionId and storagePath are required' })
     return

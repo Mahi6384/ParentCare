@@ -32,6 +32,7 @@ export async function executeTool(
     name: string,
     input: unknown,
 ): Promise<unknown> {
+    console.log('[executor] running tool:', name)
     switch (name) {
         // ── READ TOOLS ─────────────────────────────────────────────────────────
 

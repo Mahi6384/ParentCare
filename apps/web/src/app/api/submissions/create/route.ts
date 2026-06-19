@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  console.log('[submit] user authenticated:', user.id)
 
   const { data: instance } = await supabase
     .from('task_instances')
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
   if (!['pending', 'in_progress'].includes(instance.status)) {
     return NextResponse.json({ error: 'Task already submitted' }, { status: 409 })
   }
+  console.log('[submit] instance OK — status:', instance.status)
 
   // ── 2 & 3. Insert submission + update status ───────────────────
   // Use service client so both writes succeed regardless of any RLS
@@ -73,6 +75,7 @@ export async function POST(req: NextRequest) {
   if (subError) {
     return NextResponse.json({ error: subError.message }, { status: 500 })
   }
+  console.log('[submit] submission inserted:', submission.id)
 
   const { error: updateError } = await admin
     .from('task_instances')
@@ -82,21 +85,21 @@ export async function POST(req: NextRequest) {
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
+  console.log('[submit] task_instance status → submitted')
 
   // ── 4. Trigger the Railway AI worker (fire-and-forget) ───────────
-  // We don't await the result — verification is async.
-  // The worker enqueues the job and returns 202 immediately.
-  // If RAILWAY_WORKER_URL is not set (local dev), skip silently.
   const workerUrl = process.env.RAILWAY_WORKER_URL
   if (workerUrl) {
+    console.log('[submit] triggering worker at', workerUrl)
     fetch(`${workerUrl}/jobs/verify`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ submissionId: submission.id, storagePath }),
     }).catch((err) => {
-      // Log but never block the response — the parent already submitted.
-      console.error('[submissions/create] Railway trigger failed:', err.message)
+      console.error('[submit] worker trigger failed:', err.message)
     })
+  } else {
+    console.warn('[submit] RAILWAY_WORKER_URL not set — skipping worker trigger')
   }
 
   return NextResponse.json({ submissionId: submission.id }, { status: 201 })
