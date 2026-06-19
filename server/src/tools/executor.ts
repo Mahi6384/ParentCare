@@ -227,11 +227,11 @@ export async function executeTool(
         }
 
         case "send_kid_alert": {
-            const { kid_id, message, alert_type } = input as SendKidAlertInput;
+            const { kid_id, message } = input as SendKidAlertInput;
 
             const { error } = await supabase
                 .from("notifications")
-                .insert({ user_id: kid_id, message, type: alert_type });
+                .insert({ user_id: kid_id, message, channel: 'websocket' });
 
             if (error)
                 throw new Error(
