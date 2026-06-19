@@ -1,4 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
+import webpush from "web-push";
+
+webpush.setVapidDetails(
+    `mailto:${process.env.VAPID_EMAIL ?? "noreply@parentcare.app"}`,
+    process.env.VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!,
+);
 import type {
     GetParentHistoryInput,
     GetNutritionTrendInput,
@@ -286,12 +293,41 @@ export async function executeTool(
             console.log("[executor] send_whatsapp_voice stub called", input);
             return { ok: true, stub: true };
 
-        case "trigger_fullscreen_alert":
-            console.log(
-                "[executor] trigger_fullscreen_alert stub called",
-                input,
+        case "trigger_fullscreen_alert": {
+            const { parent_id, message, title } = input as {
+                parent_id: string;
+                message:   string;
+                title?:    string;
+            };
+
+            const { data: sub } = await supabase
+                .from("push_subscriptions")
+                .select("endpoint, keys_json")
+                .eq("user_id", parent_id)
+                .single();
+
+            if (!sub) {
+                console.log("[executor] no push subscription for parent", parent_id);
+                return { ok: false, reason: "no_subscription" };
+            }
+
+            const pushSub = {
+                endpoint: sub.endpoint,
+                keys: sub.keys_json as { p256dh: string; auth: string },
+            };
+
+            await webpush.sendNotification(
+                pushSub,
+                JSON.stringify({
+                    title: title ?? "ParentCare",
+                    body:  message,
+                    url:   "/parent/dashboard",
+                }),
             );
-            return { ok: true, stub: true };
+
+            console.log("[executor] push sent to parent", parent_id);
+            return { ok: true };
+        }
 
         case "generate_exercise_routine": {
             const { task_instance_id, parent_id, steps } =

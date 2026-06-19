@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import SaathiMark from '@/components/ui/SaathiMark'
+import NotificationSubscriber from './NotificationSubscriber'
 
 /*
   Parent Dashboard — ParentHome artboard (artboard #06 in the design).
@@ -110,6 +111,7 @@ export default async function ParentDashboard() {
       className="flex flex-col min-h-screen"
       style={{ background: 'var(--pc-bg)', color: 'var(--pc-ink)', fontFamily: 'var(--pc-body)' }}
     >
+      <NotificationSubscriber />
       {/* Centred column — mirrors the 390px iOS frame in the design */}
       <div className="w-full max-w-[430px] mx-auto flex flex-col flex-1">
 
