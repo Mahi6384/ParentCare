@@ -10,7 +10,7 @@ const supabase = createClient(
 )
 
 /*
-  runVerificationAgent — the core agentic loop, powered by Gemini 3.5 Flash.
+  runVerificationAgent — the core agentic loop, powered by Gemini 2.5 Flash.
 
   Key difference from Anthropic: Gemini doesn't accept image URLs directly.
   We fetch the photo from Supabase Storage and pass it as base64 inlineData.
@@ -85,7 +85,7 @@ Your job is to verify that a parent has completed their assigned health task by 
 - update_task_result MUST be called before you finish.`
 
   const model = genAI.getGenerativeModel({
-    model:             'gemini-3.5-flash',
+    model:             'gemini-2.5-flash',
     systemInstruction: systemPrompt,
     tools:             [{ functionDeclarations: geminiTools }],
   })
