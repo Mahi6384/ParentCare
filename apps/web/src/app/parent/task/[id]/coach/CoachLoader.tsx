@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useT } from '@/components/i18n/LanguageProvider'
 import CoachUI from './CoachUI'
 import type { ExerciseStep } from './page'
 
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function CoachLoader({ instanceId, taskTitle }: Props) {
+  const { t } = useT()
   const [steps, setSteps]       = useState<ExerciseStep[] | null>(null)
   const [timedOut, setTimedOut]  = useState(false)
 
@@ -63,10 +65,10 @@ export default function CoachLoader({ instanceId, taskTitle }: Props) {
       }}>
         <div style={{ fontSize: 40 }}>⚠️</div>
         <div className="font-serif" style={{ fontSize: 24, lineHeight: 1.3 }}>
-          Routine nahi bana
+          {t.coach.timeoutTitle}
         </div>
         <div style={{ fontSize: 15, color: 'var(--pc-ink3)', lineHeight: 1.5 }}>
-          Saathi abhi busy hai. Thodi der baad wapas aayein.
+          {t.coach.timeoutBody}
         </div>
         <button
           onClick={() => window.history.back()}
@@ -77,7 +79,7 @@ export default function CoachLoader({ instanceId, taskTitle }: Props) {
             fontFamily: 'var(--pc-body)', cursor: 'pointer',
           }}
         >
-          Wapas jaao
+          {t.coach.goBack}
         </button>
       </div>
     )
@@ -102,10 +104,10 @@ export default function CoachLoader({ instanceId, taskTitle }: Props) {
           S
         </div>
         <div className="font-serif" style={{ fontSize: 26, textAlign: 'center', lineHeight: 1.3 }}>
-          Routine bana raha hoon...
+          {t.coach.loadingTitle}
         </div>
         <div style={{ fontSize: 15, color: 'var(--pc-ink3)', textAlign: 'center' }}>
-          Saathi aapki health profile padh raha hai
+          {t.coach.loadingBody}
         </div>
         <div style={{
           width: 40, height: 40,

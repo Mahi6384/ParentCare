@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useT } from '@/components/i18n/LanguageProvider'
 import type { ExerciseStep } from './page'
 
 interface Props {
@@ -10,26 +11,15 @@ interface Props {
   steps:      ExerciseStep[]
 }
 
-const SECTION_DESC: Record<string, string> = {
-  'Warm-up':   'Shareer ko taiyaar karein',
-  'Main Set':  'Main exercises',
-  'Cool-down': 'Dhire se band karein',
-}
-
-// Saathi's voice guidance per exercise — these get spoken aloud via Web Speech API
-const SAATHI_LINES: Record<string, string> = {
-  'Wall push-ups':          'Papa, deewar se thoda door kadam rakhiye. Saans andar lete hue jhukiye, bahar lete hue wapas aayein.',
-  'Chair-assisted squats':  'Kursi ko pakad ke dheere neeche jaayein. Ghutne ko aage toes se aage na jaane den.',
-  'Seated knee extensions': 'Yeh ghutne ke dard ke liye bahut faydemand hai. Poori tarah seedhi karein, ek second rukein.',
-  'Neck rolls':             'Dheere se ek taraf, phir doosri taraf. Koi jaldi nahi.',
-  'Shoulder shrugs':        'Kaandhon ko upar le jaayein, ek second rukein, phir dheere neeche.',
-  'Calf stretch':           'Ek pair ko peeche rakho, dono pair zameen par. Dheere aage jhukein.',
-  'Deep breathing':         'Naak se andar lo, chaar tak gino. Munh se bahar nikalo, aath tak gino.',
-}
-
 export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
   const router = useRouter()
+  const { t, lang } = useT()
   const total = steps.length
+
+  // Section descriptions and per-exercise coaching lines live in the dictionary.
+  // Cast to index by the dynamic section/exercise names from the routine data.
+  const sectionDesc = t.coach.sectionDesc as Record<string, string>
+  const saathiLines = t.coach.saathiLines as Record<string, string>
 
   const [currentIdx, setCurrentIdx] = useState(0)
   const [restMode, setRestMode]     = useState(false)
@@ -45,17 +35,18 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
     if (typeof window === 'undefined' || !window.speechSynthesis) return
     window.speechSynthesis.cancel()
     const utt = new SpeechSynthesisUtterance(text)
-    utt.lang = 'hi-IN'
+    // Speak in the parent's chosen language so the voice matches the on-screen text.
+    utt.lang = lang === 'hi' ? 'hi-IN' : 'en-IN'
     utt.rate = 0.82
     window.speechSynthesis.speak(utt)
-  }, [])
+  }, [lang])
 
   useEffect(() => {
-    const line = SAATHI_LINES[step.name] ??
-      `${step.name}. ${step.reps ? `${step.reps} baar karein.` : `${step.duration_sec} second.`}`
+    const line = saathiLines[step.name] ??
+      t.coach.spokenFallback(step.name, step.reps, step.duration_sec)
     speak(line)
     return () => { window.speechSynthesis?.cancel() }
-  }, [currentIdx, step, speak])
+  }, [currentIdx, step, speak, saathiLines, t])
 
   // Reset rep adjustment when the step changes
   useEffect(() => { setRepAdjustment(0) }, [currentIdx])
@@ -63,7 +54,7 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
   // ── Rest countdown ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!restMode) return
-    // overrideRestRef is set by "Aaram chahiye" to force 30s regardless of step.rest_sec
+    // overrideRestRef is set by the "Need a rest" button to force 30s regardless of step.rest_sec
     const secs = overrideRestRef.current !== null ? overrideRestRef.current : (step.rest_sec ?? 15)
     overrideRestRef.current = null
     setRestCount(secs)
@@ -122,7 +113,7 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
   }
 
   const elapsedMin  = Math.round((currentIdx / total) * 20)
-  const saathiLine  = SAATHI_LINES[step.name] ?? `${step.name} — dheere se karein, koi jaldi nahi.`
+  const saathiLine  = saathiLines[step.name] ?? t.coach.lineFallback(step.name)
   const displayReps = step.reps != null ? Math.max(1, step.reps + repAdjustment) : undefined
 
   // ── Rest screen ─────────────────────────────────────────────────────────
@@ -135,14 +126,14 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
         justifyContent: 'center', padding: 32, maxWidth: 430, margin: '0 auto',
       }}>
         <div style={{ fontFamily: 'var(--pc-mono)', fontSize: 11, color: 'var(--pc-ink3)', letterSpacing: '0.1em', marginBottom: 16 }}>
-          AARAM KAREIN
+          {t.coach.restTitle}
         </div>
         <div style={{ fontSize: 80, fontWeight: 800, color: 'var(--pc-brand)', lineHeight: 1 }}>{restCount}</div>
         <div className="font-serif" style={{ fontSize: 24, marginTop: 16, marginBottom: 8 }}>
-          Thoda saanla lein...
+          {t.coach.restBreath}
         </div>
         <div style={{ fontSize: 15, color: 'var(--pc-ink3)' }}>
-          Agla: <strong>{steps[currentIdx + 1]?.name}</strong>
+          {t.coach.restNext}: <strong>{steps[currentIdx + 1]?.name}</strong>
         </div>
         <button
           onClick={() => {
@@ -153,7 +144,7 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
           className="pc-btn-ghost"
           style={{ marginTop: 32, padding: '12px 28px', borderRadius: 12, fontSize: 15 }}
         >
-          Aage badho →
+          {t.coach.restContinue}
         </button>
       </div>
     )
@@ -180,14 +171,14 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
             display: 'flex', alignItems: 'center', gap: 6, padding: 0,
           }}
         >
-          ✕ Ruko
+          {t.coach.stop}
         </button>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontFamily: 'var(--pc-mono)', fontSize: 13, color: 'var(--pc-brand)', fontWeight: 600 }}>
-            step {currentIdx + 1} / {total}
+            {t.coach.step} {currentIdx + 1} / {total}
           </div>
           <div style={{ fontFamily: 'var(--pc-mono)', fontSize: 11, color: 'var(--pc-ink3)', marginTop: 3 }}>
-            {taskTitle} · {elapsedMin} min
+            {taskTitle} · {elapsedMin} {t.coach.min}
           </div>
         </div>
       </div>
@@ -227,7 +218,7 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
                 background: '#EDF7EC', padding: '3px 8px',
                 borderRadius: 99, fontWeight: 600,
               }}>
-                ✓ safe
+                {t.coach.safe}
               </span>
             )}
           </div>
@@ -242,19 +233,19 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
 
           {/* Section subtitle */}
           <div style={{ fontSize: 14, color: 'var(--pc-ink2)', marginBottom: 20 }}>
-            {SECTION_DESC[step.section] ?? step.section}
+            {sectionDesc[step.section] ?? step.section}
           </div>
 
           {/* Metrics chips */}
           <div style={{ display: 'flex', gap: 10 }}>
             {displayReps != null && (
-              <MetricChip label="REPS" value={String(displayReps)} />
+              <MetricChip label={t.coach.repsLabel} value={String(displayReps)} />
             )}
             {step.duration_sec != null && (
-              <MetricChip label="TIME" value={`${step.duration_sec}s`} />
+              <MetricChip label={t.coach.timeLabel} value={`${step.duration_sec}s`} />
             )}
             {step.rest_sec != null && step.rest_sec > 0 && (
-              <MetricChip label="REST" value={`${step.rest_sec}s`} />
+              <MetricChip label={t.coach.restLabel} value={`${step.rest_sec}s`} />
             )}
           </div>
 
@@ -287,7 +278,7 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
           </div>
           <div>
             <div style={{ fontSize: 11, color: 'var(--pc-ink3)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.04em' }}>
-              SAATHI BOL RAHA HAI
+              {t.coach.saathiSpeaking}
             </div>
             <div style={{ fontSize: 14, color: 'var(--pc-ink2)', fontStyle: 'italic', lineHeight: 1.55 }}>
               "{saathiLine}"
@@ -309,14 +300,14 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
           }}
         >
-          ✓ &nbsp;Ho gaya
+          {t.coach.done}
         </button>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
           {[
-            { label: 'Reps kam karein', action: handleReduceReps },
-            { label: 'Aaram chahiye',   action: handleNeedRest  },
-            { label: 'Skip karein',     action: handleSkip      },
+            { label: t.coach.reduceReps, action: handleReduceReps },
+            { label: t.coach.needRest,   action: handleNeedRest  },
+            { label: t.coach.skip,       action: handleSkip      },
           ].map(({ label, action }) => (
             <button
               key={label}

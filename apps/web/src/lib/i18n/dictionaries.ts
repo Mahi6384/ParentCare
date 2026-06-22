@@ -124,6 +124,51 @@ const en = {
     ok: 'OK',
     kidFallback: 'your child',
   },
+  coach: {
+    // Loader / timeout states
+    loadingTitle: 'Building your routine…',
+    loadingBody: 'Saathi is reading your health profile',
+    timeoutTitle: "Couldn't build a routine",
+    timeoutBody: 'Saathi is busy right now. Please try again in a bit.',
+    goBack: 'Go back',
+    // Section descriptions, keyed by the section name that comes from the routine data
+    sectionDesc: {
+      'Warm-up': 'Warm up your body',
+      'Main Set': 'Main exercises',
+      'Cool-down': 'Wind down slowly',
+    },
+    // Spoken + shown coaching lines, keyed by the exercise name from the routine data
+    saathiLines: {
+      'Wall push-ups': 'Papa, stand a little away from the wall. Breathe in as you lean in, breathe out as you push back.',
+      'Chair-assisted squats': 'Hold the chair and lower down slowly. Keep your knees from going past your toes.',
+      'Seated knee extensions': 'This really helps with knee pain. Straighten fully and hold for a second.',
+      'Neck rolls': 'Gently to one side, then the other. No hurry at all.',
+      'Shoulder shrugs': 'Lift your shoulders up, hold for a second, then slowly down.',
+      'Calf stretch': 'Step one foot back, both feet on the floor. Lean forward slowly.',
+      'Deep breathing': 'Breathe in through your nose, count to four. Out through your mouth, count to eight.',
+    },
+    spokenFallback: (name: string, reps: number | null | undefined, duration: number | null | undefined) =>
+      `${name}. ${reps ? `${reps} reps.` : `${duration} seconds.`}`,
+    lineFallback: (name: string) => `${name} — go slowly, no hurry.`,
+    // Coach UI chrome
+    stop: '✕ Stop',
+    step: 'step',
+    min: 'min',
+    safe: '✓ safe',
+    repsLabel: 'REPS',
+    timeLabel: 'TIME',
+    restLabel: 'REST',
+    saathiSpeaking: 'SAATHI IS SPEAKING',
+    done: '✓  Done',
+    reduceReps: 'Fewer reps',
+    needRest: 'Need a rest',
+    skip: 'Skip',
+    // Rest screen
+    restTitle: 'TAKE A REST',
+    restBreath: 'Catch your breath…',
+    restNext: 'Next',
+    restContinue: 'Continue →',
+  },
 }
 
 const hi: typeof en = {
@@ -233,6 +278,45 @@ const hi: typeof en = {
     saathiSent: (kid) => `${kid} को आपकी फ़ोटो भेज दी है। आज बहुत अच्छा किया!`,
     ok: 'ठीक है',
     kidFallback: 'बच्चे',
+  },
+  coach: {
+    loadingTitle: 'रूटीन बना रहे हैं…',
+    loadingBody: 'साथी आपकी हेल्थ प्रोफ़ाइल पढ़ रहे हैं',
+    timeoutTitle: 'रूटीन नहीं बन पाया',
+    timeoutBody: 'साथी अभी व्यस्त हैं। थोड़ी देर बाद फिर कोशिश करें।',
+    goBack: 'वापस जाएँ',
+    sectionDesc: {
+      'Warm-up': 'शरीर को तैयार करें',
+      'Main Set': 'मुख्य एक्सरसाइज़',
+      'Cool-down': 'धीरे से समाप्त करें',
+    },
+    saathiLines: {
+      'Wall push-ups': 'पापा, दीवार से थोड़ा दूर खड़े हों। साँस अंदर लेते हुए झुकें, बाहर छोड़ते हुए वापस आएँ।',
+      'Chair-assisted squats': 'कुर्सी पकड़कर धीरे नीचे जाएँ। घुटनों को पंजों से आगे न जाने दें।',
+      'Seated knee extensions': 'यह घुटनों के दर्द के लिए बहुत फ़ायदेमंद है। पूरी तरह सीधा करें, एक सेकंड रुकें।',
+      'Neck rolls': 'धीरे से एक तरफ़, फिर दूसरी तरफ़। कोई जल्दी नहीं।',
+      'Shoulder shrugs': 'कंधों को ऊपर ले जाएँ, एक सेकंड रुकें, फिर धीरे नीचे।',
+      'Calf stretch': 'एक पैर पीछे रखें, दोनों पैर ज़मीन पर। धीरे आगे झुकें।',
+      'Deep breathing': 'नाक से अंदर लें, चार तक गिनें। मुँह से बाहर छोड़ें, आठ तक गिनें।',
+    },
+    spokenFallback: (name, reps, duration) => `${name}. ${reps ? `${reps} बार करें।` : `${duration} सेकंड।`}`,
+    lineFallback: (name) => `${name} — धीरे से करें, कोई जल्दी नहीं।`,
+    stop: '✕ रुकें',
+    step: 'स्टेप',
+    min: 'मिनट',
+    safe: '✓ सुरक्षित',
+    repsLabel: 'रेप्स',
+    timeLabel: 'समय',
+    restLabel: 'आराम',
+    saathiSpeaking: 'साथी बोल रहे हैं',
+    done: '✓  हो गया',
+    reduceReps: 'कम रेप्स',
+    needRest: 'आराम चाहिए',
+    skip: 'स्किप',
+    restTitle: 'आराम करें',
+    restBreath: 'थोड़ा साँस लें…',
+    restNext: 'अगला',
+    restContinue: 'आगे बढ़ें →',
   },
 }
 
