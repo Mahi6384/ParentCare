@@ -66,6 +66,13 @@ const en = {
             ? `All ${total} tasks done today — wonderful work! 🌟`
             : `${done} of ${total} done so far. Keep it up! 💪`,
   },
+  history: {
+    subtitle: 'Your completed tasks show up here.',
+    emptyTitle: 'No history yet',
+    emptyBody: "As you complete tasks, they'll appear here.",
+    today: 'Today',
+    yesterday: 'Yesterday',
+  },
 }
 
 const hi: typeof en = {
@@ -118,6 +125,13 @@ const hi: typeof en = {
           : done === total
             ? `आज सभी ${total} काम हो गए — बहुत बढ़िया! 🌟`
             : `अभी तक ${done}/${total} काम हो गए। ऐसे ही करते रहिए! 💪`,
+  },
+  history: {
+    subtitle: 'आपके पूरे किए हुए काम यहाँ दिखेंगे।',
+    emptyTitle: 'अभी कोई इतिहास नहीं',
+    emptyBody: 'जैसे-जैसे आप काम पूरे करेंगे, वे यहाँ दिखेंगे।',
+    today: 'आज',
+    yesterday: 'कल',
   },
 }
 
