@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useT } from '@/components/i18n/LanguageProvider'
 import PhotoUpload from '@/components/parent/PhotoUpload'
 
 /*
@@ -30,6 +31,7 @@ type FormState = 'idle' | 'uploading' | 'error'
 
 export default function SubmitForm({ instanceId, parentId }: Props) {
   const router = useRouter()
+  const { t } = useT()
   const [file, setFile]           = useState<File | null>(null)
   const [formState, setFormState] = useState<FormState>('idle')
   const [errMsg, setErrMsg]       = useState<string | null>(null)
@@ -99,7 +101,7 @@ export default function SubmitForm({ instanceId, parentId }: Props) {
           outline: file ? 'none' : '0.5px solid var(--pc-hair)',
         } as React.CSSProperties}
       >
-        {formState === 'uploading' ? '⏳ Bhej rahe hain…' : '📤 Submit karo'}
+        {formState === 'uploading' ? t.submit.uploading : t.submit.submitBtn}
       </button>
 
       {errMsg && (
