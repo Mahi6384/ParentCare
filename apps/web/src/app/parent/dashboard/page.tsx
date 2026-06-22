@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import SaathiMark from '@/components/ui/SaathiMark'
 import NotificationSubscriber from './NotificationSubscriber'
 import { getDict } from '@/lib/i18n/server'
+import CompleteTaskButtons from '@/components/parent/CompleteTaskButtons'
 
 /*
   Parent Dashboard — ParentHome artboard (artboard #06 in the design).
@@ -60,7 +61,8 @@ export default async function ParentDashboard() {
       due_at,
       tasks (
         title,
-        type
+        type,
+        proof_type
       )
     `)
     .eq('parent_id', user!.id)
@@ -91,16 +93,22 @@ export default async function ParentDashboard() {
   // Map DB rows → the shape the existing UI already expects.
   // "done" = any terminal status; only pending/in_progress are still actionable.
   const tasks = (instances ?? []).map(instance => {
-    const task = instance.tasks as unknown as { title: string; type: string }
+    const task = instance.tasks as unknown as { title: string; type: string; proof_type: string }
     const dueTime = new Date(instance.due_at).toLocaleTimeString('en-IN', {
       hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
     })
     const done = !['pending', 'in_progress'].includes(instance.status)
-    const subLabel = task.type === 'exercise' ? t.dashboard.exerciseCoach : t.dashboard.photoVerification
+    // Sub-label tells the parent what kind of completion this task expects.
+    const subLabel = task.type === 'exercise'
+      ? t.dashboard.exerciseCoach
+      : task.proof_type === 'none'
+        ? t.dashboard.noProof
+        : t.dashboard.photoVerification
     return {
-      id:    instance.id,
-      type:  task.type,
-      title: task.title,
+      id:        instance.id,
+      type:      task.type,
+      proofType: task.proof_type,
+      title:     task.title,
       sub:   done ? statusLabel(instance.status) : `${dueTime} · ${subLabel}`,
       icon:  taskTypeIcons[task.type] ?? '✅',
       done,
@@ -216,24 +224,29 @@ export default async function ParentDashboard() {
                 {nextTask.sub}{t.dashboard.guideSuffix}
               </div>
 
-              {/* CTA button — exercise goes to coach, all others go to photo submit */}
-              <Link
-                href={nextTask.type === 'exercise'
-                  ? `/parent/task/${nextTask.id}/coach`
-                  : `/parent/submit/${nextTask.id}`
-                }
-                style={{
-                  marginTop: 18,
-                  background: 'var(--pc-surface)', color: 'var(--pc-brand-deep)',
-                  fontFamily: 'var(--pc-body)', fontSize: 18, fontWeight: 700,
-                  padding: '14px 22px', borderRadius: 14,
-                  display: 'inline-flex', alignItems: 'center', gap: 10,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  textDecoration: 'none',
-                }}
-              >
-                {t.dashboard.startCta}
-              </Link>
+              {/* CTA — no-proof tasks get Done/Couldn't-do-it buttons; exercise
+                  goes to the coach; everything else goes to the photo submit flow. */}
+              {nextTask.proofType === 'none' && nextTask.type !== 'exercise' ? (
+                <CompleteTaskButtons instanceId={nextTask.id} variant="hero" />
+              ) : (
+                <Link
+                  href={nextTask.type === 'exercise'
+                    ? `/parent/task/${nextTask.id}/coach`
+                    : `/parent/submit/${nextTask.id}`
+                  }
+                  style={{
+                    marginTop: 18,
+                    background: 'var(--pc-surface)', color: 'var(--pc-brand-deep)',
+                    fontFamily: 'var(--pc-body)', fontSize: 18, fontWeight: 700,
+                    padding: '14px 22px', borderRadius: 14,
+                    display: 'inline-flex', alignItems: 'center', gap: 10,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  {t.dashboard.startCta}
+                </Link>
+              )}
             </div>
           </div>
         )}
@@ -251,66 +264,84 @@ export default async function ParentDashboard() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {tasks.map(t => (
-              <Link
-                key={t.id}
-                href={t.done ? '#' : t.type === 'exercise'
-                  ? `/parent/task/${t.id}/coach`
-                  : `/parent/submit/${t.id}`
-                }
-                style={{ textDecoration: 'none', color: 'inherit' }}
-              >
-              <div
-                style={{
-                  background: 'var(--pc-surface)',
-                  borderRadius: 16,
-                  padding: '14px 16px',
-                  border: '0.5px solid var(--pc-hair)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 14,
-                  opacity: t.done ? 0.65 : 1,
-                  transition: 'opacity 0.2s',
-                }}
-              >
-                {/* Icon tile */}
+            {tasks.map(task => {
+              // No-proof, non-exercise tasks complete with inline buttons (no photo);
+              // those rows aren't links. Everything else links to its flow.
+              const tapToComplete = !task.done && task.proofType === 'none' && task.type !== 'exercise'
+
+              const card = (
                 <div
                   style={{
-                    width: 46, height: 46, borderRadius: 12,
-                    background: t.done ? 'var(--pc-surface2)' : 'var(--pc-brand-tint)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: t.done ? 20 : 22,
+                    background: 'var(--pc-surface)',
+                    borderRadius: 16,
+                    padding: '14px 16px',
+                    border: '0.5px solid var(--pc-hair)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    opacity: task.done ? 0.65 : 1,
+                    transition: 'opacity 0.2s',
                   }}
                 >
-                  {t.done ? '✓' : t.icon}
-                </div>
-
-                {/* Task info */}
-                <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Icon tile */}
                   <div
                     style={{
-                      fontSize: 18, fontWeight: 600,
-                      textDecoration: t.done ? 'line-through' : 'none',
-                      textDecorationColor: 'var(--pc-ink4)',
+                      width: 46, height: 46, borderRadius: 12,
+                      background: task.done ? 'var(--pc-surface2)' : 'var(--pc-brand-tint)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: task.done ? 20 : 22,
                     }}
                   >
-                    {t.title}
+                    {task.done ? '✓' : task.icon}
                   </div>
-                  <div style={{ fontSize: 14, color: 'var(--pc-ink2)', marginTop: 2 }}>
-                    {t.sub}
-                  </div>
-                </div>
 
-                {/* Time indicator */}
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  {t.done
-                    ? <span style={{ fontSize: 13, color: 'var(--pc-ok)', fontWeight: 600 }}>{t.note}</span>
-                    : <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--pc-brand-deep)' }}>{t.due}</span>
-                  }
+                  {/* Task info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 18, fontWeight: 600,
+                        textDecoration: task.done ? 'line-through' : 'none',
+                        textDecorationColor: 'var(--pc-ink4)',
+                      }}
+                    >
+                      {task.title}
+                    </div>
+                    <div style={{ fontSize: 14, color: 'var(--pc-ink2)', marginTop: 2 }}>
+                      {task.sub}
+                    </div>
+                  </div>
+
+                  {/* Right side — inline Done/Not-done for no-proof tasks, else time/status */}
+                  {tapToComplete ? (
+                    <CompleteTaskButtons instanceId={task.id} variant="row" />
+                  ) : (
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      {task.done
+                        ? <span style={{ fontSize: 13, color: 'var(--pc-ok)', fontWeight: 600 }}>{task.note}</span>
+                        : <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--pc-brand-deep)' }}>{task.due}</span>
+                      }
+                    </div>
+                  )}
                 </div>
-              </div>
-              </Link>
-            ))}
+              )
+
+              // Tap-to-complete rows must NOT be wrapped in a link (the buttons
+              // handle the action); all other rows link to their flow.
+              return tapToComplete ? (
+                <div key={task.id}>{card}</div>
+              ) : (
+                <Link
+                  key={task.id}
+                  href={task.done ? '#' : task.type === 'exercise'
+                    ? `/parent/task/${task.id}/coach`
+                    : `/parent/submit/${task.id}`
+                  }
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
+                  {card}
+                </Link>
+              )
+            })}
           </div>
 
           {/* Saathi message card */}
