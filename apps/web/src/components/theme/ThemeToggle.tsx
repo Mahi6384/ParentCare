@@ -12,13 +12,19 @@
 import { useTheme } from '@/components/theme/ThemeProvider'
 import type { Theme } from '@/lib/theme'
 
-const OPTIONS: { value: Theme; label: string; icon: string }[] = [
-  { value: 'light', label: 'Light', icon: '☀️' },
-  { value: 'dark', label: 'Dark', icon: '🌙' },
-]
-
-export default function ThemeToggle() {
+// Labels are props (defaulting to English) so the component stays reusable
+// outside the parent app where the i18n provider isn't mounted.
+export default function ThemeToggle({
+  labels = { light: 'Light', dark: 'Dark' },
+}: {
+  labels?: { light: string; dark: string }
+}) {
   const { theme, setTheme } = useTheme()
+
+  const OPTIONS: { value: Theme; label: string; icon: string }[] = [
+    { value: 'light', label: labels.light, icon: '☀️' },
+    { value: 'dark', label: labels.dark, icon: '🌙' },
+  ]
 
   return (
     <div

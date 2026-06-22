@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { LanguageProvider } from '@/components/i18n/LanguageProvider'
+import { getLang } from '@/lib/i18n/server'
 
 // This layout protects ALL /parent/* routes.
 
@@ -21,5 +23,10 @@ export default async function ParentLayout({
 
   if (profile?.role !== 'parent') redirect('/auth/login')
 
-  return <>{children}</>
+  // Read the language cookie on the server so the whole parent tree renders
+  // in the chosen language from the first paint, then hand the same value to
+  // the client provider so hydration agrees.
+  const lang = await getLang()
+
+  return <LanguageProvider initialLang={lang}>{children}</LanguageProvider>
 }

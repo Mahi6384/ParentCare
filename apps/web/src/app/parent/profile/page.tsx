@@ -2,12 +2,16 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import LanguageToggle from '@/components/i18n/LanguageToggle'
+import { getDict } from '@/lib/i18n/server'
 
 export default async function ParentProfilePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) redirect('/auth/login')
+
+  const t = await getDict()
 
   const { data: profile } = await supabase
     .from('users')
@@ -32,7 +36,7 @@ export default async function ParentProfilePage() {
             ←
           </Link>
           <h1 className="font-serif" style={{ fontSize: 28, fontWeight: 500, letterSpacing: '-0.02em', margin: 0 }}>
-            Profile
+            {t.profile.title}
           </h1>
         </div>
 
@@ -57,6 +61,20 @@ export default async function ParentProfilePage() {
         </div>
 
         {/* Settings — appearance */}
+        <div style={{ marginBottom: 20 }}>
+          <div
+            style={{
+              fontSize: 12.5, fontWeight: 600, letterSpacing: '0.06em',
+              textTransform: 'uppercase', color: 'var(--pc-ink3)',
+              marginBottom: 10,
+            }}
+          >
+            {t.profile.appearance}
+          </div>
+          <ThemeToggle labels={{ light: t.theme.light, dark: t.theme.dark }} />
+        </div>
+
+        {/* Settings — language */}
         <div style={{ marginBottom: 24 }}>
           <div
             style={{
@@ -65,9 +83,9 @@ export default async function ParentProfilePage() {
               marginBottom: 10,
             }}
           >
-            Appearance
+            {t.profile.language}
           </div>
-          <ThemeToggle />
+          <LanguageToggle />
         </div>
 
         {/* Logout */}
@@ -85,7 +103,7 @@ export default async function ParentProfilePage() {
               fontFamily: 'var(--pc-body)',
             }}
           >
-            Log out
+            {t.profile.logout}
           </button>
         </form>
 
