@@ -25,7 +25,7 @@ import type { HealthProfile, ProofType, RecurrenceType } from '@/types'
 
 // ── Types ─────────────────────────────────────────────────────
 
-type TemplateKey = 'walk' | 'diet' | 'medicine' | 'sleep' | 'exercise'
+type TemplateKey = 'walk' | 'diet' | 'medicine' | 'sleep' | 'exercise' | 'custom'
 
 interface FormState {
   selectedTemplate: TemplateKey | null
@@ -126,6 +126,15 @@ const TEMPLATE_DEFAULTS: Record<TemplateKey, {
         : ''
       return `Saathi will generate a fresh ${dur}-min ${fitness} routine each morning, ${eqText}.${mods} A photo after completion confirms it happened.`
     },
+  },
+  custom: {
+    label:        'Custom',
+    emoji:        '✨',
+    defaultTitle: '',                 // empty — the kid writes their own
+    defaultTime:  '09:00',
+    defaultProof: 'photo',
+    saathiText: () =>
+      'Your own task. Saathi will remind Papa at the time you set. Choose whether a photo is needed — if not, Papa just taps Done.',
   },
 }
 
@@ -298,12 +307,13 @@ export default function NewTaskForm({ familyId, healthProfile, parentId, parentT
         Add a new task for Papa
       </div>
       <p style={{ margin: '0 0 28px', fontSize: 14, lineHeight: 1.55, color: 'var(--pc-ink3)' }}>
-        Pick a template. Saathi will adapt it to Papa&apos;s health profile — conditions,
-        restrictions, fitness, equipment — before sending the first reminder.
+        Pick a template — Saathi adapts it to Papa&apos;s health profile — or choose
+        <strong> Custom</strong> to create any task of your own, with your own time,
+        frequency, and whether a photo is needed.
       </p>
 
       {/* ── Template picker ─────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 32 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 32 }}>
         {templateKeys.map(key => {
           const t          = TEMPLATE_DEFAULTS[key]
           const isSelected = form.selectedTemplate === key
@@ -348,7 +358,7 @@ export default function NewTaskForm({ familyId, healthProfile, parentId, parentT
               className="pc-input"
               value={form.title}
               onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="e.g. Morning Walk"
+              placeholder={form.selectedTemplate === 'custom' ? 'e.g. Call the doctor, Water the plants' : 'e.g. Morning Walk'}
               required
             />
           </div>
@@ -363,9 +373,10 @@ export default function NewTaskForm({ familyId, healthProfile, parentId, parentT
                 onChange={e => setForm(prev => ({ ...prev, recurrence: e.target.value as RecurrenceType }))}
                 style={{ cursor: 'pointer' }}
               >
-                <option value="daily">Daily</option>
+                <option value="daily">Every day</option>
+                <option value="custom">Every other day</option>
                 <option value="weekly">Weekly</option>
-                <option value="once">Once</option>
+                <option value="once">Just once</option>
               </select>
               <input
                 type="time"
@@ -376,8 +387,10 @@ export default function NewTaskForm({ familyId, healthProfile, parentId, parentT
             </div>
           </div>
 
-          {/* Duration — visual only in MVP; defaults to health profile preferred_duration */}
-          {/* Not stored per-task: health_profiles.preferred_duration is the canonical value */}
+          {/* Duration — visual only in MVP; defaults to health profile preferred_duration.
+              Hidden for custom tasks: a custom task ("Call grandma") has no health-profile
+              duration, so showing this picker would be meaningless. */}
+          {form.selectedTemplate !== 'custom' && (
           <div>
             <label className="pc-label">Duration</label>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -408,6 +421,7 @@ export default function NewTaskForm({ familyId, healthProfile, parentId, parentT
               Based on Papa&apos;s health profile · change in profile settings
             </p>
           </div>
+          )}
 
           {/* Reminder channels — UI only; notification system built in Phase 2 */}
           <div>
