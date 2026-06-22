@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Newsreader, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import { ThemeProvider } from '@/components/theme/ThemeProvider'
+import { themeInitScript } from '@/lib/theme'
 
 /*
   Why next/font instead of a CSS @import?
@@ -64,6 +66,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`
         ${newsreader.variable}
         ${plusJakartaSans.variable}
@@ -82,7 +85,16 @@ export default function RootLayout({
           --pc-body:    var(--font-plus-jakarta-sans), system-ui, sans-serif;
           --pc-mono:    var(--font-jetbrains-mono), monospace;
       */}
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {/*
+          No-flash theme script — executes during HTML parsing, before any
+          visible element paints, so dark-mode users never see a white flash.
+          dangerouslySetInnerHTML is the standard, safe way to inline it here:
+          the content is our own trusted constant, not user input.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   )
 }

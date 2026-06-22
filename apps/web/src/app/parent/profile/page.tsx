@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import ThemeToggle from '@/components/theme/ThemeToggle'
 
 export default async function ParentProfilePage() {
   const supabase = await createClient()
@@ -53,6 +54,20 @@ export default async function ParentProfilePage() {
           <div style={{ fontSize: 14, color: 'var(--pc-ink2)' }}>
             {profile?.email ?? user.email}
           </div>
+        </div>
+
+        {/* Settings — appearance */}
+        <div style={{ marginBottom: 24 }}>
+          <div
+            style={{
+              fontSize: 12.5, fontWeight: 600, letterSpacing: '0.06em',
+              textTransform: 'uppercase', color: 'var(--pc-ink3)',
+              marginBottom: 10,
+            }}
+          >
+            Appearance
+          </div>
+          <ThemeToggle />
         </div>
 
         {/* Logout */}
