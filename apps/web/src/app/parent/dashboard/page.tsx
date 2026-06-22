@@ -2,27 +2,30 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import SaathiMark from '@/components/ui/SaathiMark'
 import NotificationSubscriber from './NotificationSubscriber'
+import { getDict } from '@/lib/i18n/server'
 
 /*
   Parent Dashboard — ParentHome artboard (artboard #06 in the design).
 
   Design decisions:
   - Max-width 430px, centred — mirrors the iOS PWA frame in the design.
-  - Hinglish UI text throughout — the parent-facing app is warmer,
-    more familiar, less technical than the kid's desktop dashboard.
+  - All UI text comes from the i18n dictionary (English default, Hindi toggle
+    in Profile). The parent-facing copy is warm and non-technical.
   - Hero card: full-width saffron card for the top pending task.
     This is what the parent should do RIGHT NOW.
   - Task list: remaining tasks, done ones greyed out at 65% opacity.
-  - Saathi message: brief, encouraging, in Hinglish.
-  - Bottom tab bar: Aaj / Itihaas / Saathi / Profile.
+  - Saathi message: brief, encouraging, derived from real task counts.
+  - Bottom tab bar: Today / History / Profile.
 
-  Placeholder tasks will be replaced by real task_instances queries
-  in Step 6 of the roadmap (parent task + photo upload flow).
+  Tasks are real task_instances joined to tasks, scoped to today (UTC window).
 */
 
 export default async function ParentDashboard() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  // Dictionary for the parent's chosen language (cookie-driven).
+  const t = await getDict()
 
   const { data: profile } = await supabase
     .from('users')
@@ -30,14 +33,12 @@ export default async function ParentDashboard() {
     .eq('id', user!.id)
     .single()
 
-  // Derive first name for Hinglish greeting ("Namaste, Ramesh ji 🙏")
+  // Derive first name for the greeting ("Hello, Ramesh 🙏")
   const firstName = profile?.name?.split(' ')[0] ?? 'Papa'
 
-  // Day display — e.g. "SHANIWAR · 16 AUG"
-  const today    = new Date()
-  const dayNames = ['RAVIVAAR', 'SOMVAAR', 'MANGALVAAR', 'BUDHVAAR', 'GURUVAAR', 'SHUKRAVAAR', 'SHANIVAR']
-  const months   = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
-  const dayStr   = `${dayNames[today.getDay()]} · ${today.getDate()} ${months[today.getMonth()]}`
+  // Day display — e.g. "SAT · 16 AUG" (day/month names come from the dictionary)
+  const today  = new Date()
+  const dayStr = `${t.dashboard.days[today.getDay()]} · ${today.getDate()} ${t.dashboard.months[today.getMonth()]}`
 
   // ── Today's task instances from Supabase ─────────────────
   // "Today" = UTC midnight-to-midnight window. Due_at values are stored
@@ -82,6 +83,11 @@ export default async function ParentDashboard() {
     sleep: '😴', exercise: '💪', custom: '✅',
   }
 
+  // Turn a raw task_status enum into a friendly, localized label.
+  // Falls back to the raw value for the (non-terminal) statuses not in the map.
+  const statusLabels = t.status as Record<string, string>
+  const statusLabel = (s: string) => statusLabels[s] ?? s
+
   // Map DB rows → the shape the existing UI already expects.
   // "done" = any terminal status; only pending/in_progress are still actionable.
   const tasks = (instances ?? []).map(instance => {
@@ -90,15 +96,15 @@ export default async function ParentDashboard() {
       hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
     })
     const done = !['pending', 'in_progress'].includes(instance.status)
-    const subLabel = task.type === 'exercise' ? 'exercise coach' : 'photo verification'
+    const subLabel = task.type === 'exercise' ? t.dashboard.exerciseCoach : t.dashboard.photoVerification
     return {
       id:    instance.id,
       type:  task.type,
       title: task.title,
-      sub:   done ? instance.status : `${dueTime} · ${subLabel}`,
+      sub:   done ? statusLabel(instance.status) : `${dueTime} · ${subLabel}`,
       icon:  taskTypeIcons[task.type] ?? '✅',
       done,
-      note:  done ? instance.status : undefined,
+      note:  done ? statusLabel(instance.status) : undefined,
       due:   done ? undefined : dueTime,
     }
   })
@@ -137,7 +143,7 @@ export default async function ParentDashboard() {
             >
               🔥{' '}
               <b style={{ color: 'var(--pc-ink)', fontWeight: 700 }}>{topStreak}</b>
-              {' '}din
+              {' '}{t.dashboard.streakSuffix}
             </div>
           </div>
 
@@ -146,16 +152,15 @@ export default async function ParentDashboard() {
             className="font-serif font-medium text-[34px] text-ink"
             style={{ letterSpacing: '-0.03em', lineHeight: 1.1, marginTop: 14 }}
           >
-            Namaste, {firstName} 🙏
+            {t.dashboard.greeting(firstName)}
           </div>
 
           {/* Status subtitle */}
           <div style={{ marginTop: 6, fontSize: 17, color: 'var(--pc-ink2)', lineHeight: 1.4 }}>
-            Aaj{' '}
-            <b style={{ color: 'var(--pc-ok)' }}>{completed} kaam ho gaye</b>.
+            <b style={{ color: 'var(--pc-ok)' }}>{t.dashboard.tasksDone(completed)}</b>.
             {nextTask
-              ? ` Ek abhi shuru karna hai — aapka ${nextTask.title}.`
-              : ' Sab kaam ho gaye! Bahut acha 🌟'}
+              ? t.dashboard.nextHint(nextTask.title)
+              : t.dashboard.allDone}
           </div>
         </div>
 
@@ -183,7 +188,7 @@ export default async function ParentDashboard() {
                 ))}
               </svg>
 
-              {/* "abhi karna hai" label */}
+              {/* "do now" label */}
               <div
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
@@ -197,7 +202,7 @@ export default async function ParentDashboard() {
                     background: '#fff', flexShrink: 0,
                   }}
                 />
-                abhi karna hai
+                {t.dashboard.doNow}
               </div>
 
               {/* Task title */}
@@ -208,7 +213,7 @@ export default async function ParentDashboard() {
                 {nextTask.title}
               </div>
               <div style={{ fontSize: 16, opacity: 0.9, marginTop: 6, lineHeight: 1.4 }}>
-                {nextTask.sub} — Saathi aapko guide karega.
+                {nextTask.sub}{t.dashboard.guideSuffix}
               </div>
 
               {/* CTA button — exercise goes to coach, all others go to photo submit */}
@@ -227,7 +232,7 @@ export default async function ParentDashboard() {
                   textDecoration: 'none',
                 }}
               >
-                ▶ Shuru karein
+                {t.dashboard.startCta}
               </Link>
             </div>
           </div>
@@ -242,7 +247,7 @@ export default async function ParentDashboard() {
               padding: '4px 4px 10px',
             }}
           >
-            Baaki ke kaam
+            {t.dashboard.otherTasks}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -320,11 +325,10 @@ export default async function ParentDashboard() {
             <SaathiMark size={28} />
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--pc-ink2)' }}>
-                Saathi ka sandesh
+                {t.dashboard.saathiTitle}
               </div>
               <p style={{ margin: '4px 0 0', fontSize: 16, lineHeight: 1.45, color: 'var(--pc-ink)', fontStyle: 'italic' }}>
-                &ldquo;Aaj bahut acha chal raha hai — 2 kaam pehle hi ho gaye.
-                Lunch mein dal zaroor lena. 🙏&rdquo;
+                &ldquo;{t.dashboard.saathiMessage(completed, tasks.length)}&rdquo;
               </p>
             </div>
           </div>
@@ -341,9 +345,9 @@ export default async function ParentDashboard() {
           }}
         >
           {[
-            { label: 'Aaj',     icon: '☀️', href: '/parent/dashboard', active: true  },
-            { label: 'Itihaas', icon: '📋', href: '/parent/itihaas',   active: false },
-            { label: 'Profile', icon: '👤', href: '/parent/profile',   active: false },
+            { label: t.nav.today,   icon: '☀️', href: '/parent/dashboard', active: true  },
+            { label: t.nav.history, icon: '📋', href: '/parent/itihaas',   active: false },
+            { label: t.nav.profile, icon: '👤', href: '/parent/profile',   active: false },
           ].map(({ label, icon, href, active }) => (
             <Link
               key={label}
