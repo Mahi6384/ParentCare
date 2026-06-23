@@ -44,13 +44,8 @@ export default function KidNavBar({ userName, activeTab, badge }: KidNavBarProps
         }}
       >
         <SaathiMark size={26} />
-        <div style={{ lineHeight: 1.1 }}>
-          <div className="font-serif font-medium text-[18px] text-ink" style={{ letterSpacing: '-0.01em' }}>
-            ParentCare
-          </div>
-          <div className="font-mono text-[10.5px] text-ink-3 tracking-[0.04em] uppercase">
-            for {userName}
-          </div>
+        <div className="font-serif font-medium text-[18px] text-ink" style={{ letterSpacing: '-0.01em' }}>
+          ParentCare
         </div>
       </div>
 
@@ -94,40 +89,20 @@ export default function KidNavBar({ userName, activeTab, badge }: KidNavBarProps
 
       <div style={{ flex: 1 }} />
 
-      {/* Search */}
-      <div
-        style={{
-          display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px 6px 10px',
-          background: 'var(--pc-surface)', border: '0.5px solid var(--pc-hair)',
-          borderRadius: 999, fontSize: 12.5, color: 'var(--pc-ink3)', minWidth: 220,
-        }}
-      >
-        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="var(--pc-ink3)" strokeWidth={1.5} strokeLinecap="round">
-          <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
-        </svg>
-        <span>Search tasks, days, photos…</span>
-        <span
-          style={{
-            marginLeft: 'auto', fontFamily: 'var(--pc-mono)', fontSize: 10.5,
-            padding: '1px 5px', border: '0.5px solid var(--pc-hair)',
-            borderRadius: 4, color: 'var(--pc-ink3)',
-          }}
-        >
-          ⌘K
-        </span>
-      </div>
-
-      {/* User avatar */}
-      <div
+      {/* User avatar → profile + sign-out page */}
+      <Link
+        href="/kid/profile"
+        title="Profile & sign out"
         style={{
           width: 30, height: 30, borderRadius: '50%',
           background: 'var(--pc-surface2)', border: '0.5px solid var(--pc-hair)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'var(--pc-display)', fontSize: 14, fontWeight: 600, color: 'var(--pc-ink)',
+          fontFamily: 'var(--pc-display)', fontSize: 14, fontWeight: 600,
+          color: 'var(--pc-ink)', textDecoration: 'none',
         }}
       >
         {userName[0]?.toUpperCase() ?? 'U'}
-      </div>
+      </Link>
     </div>
   )
 }
