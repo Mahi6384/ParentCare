@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
   const { data: family, error: findError } = await admin
     .from('families')
-    .select('id, kid_id, parent_id')
+    .select('id, kid_id, parent_id, pending_health_profile')
     .eq('invite_code', code.toUpperCase().trim())
     .single()
 
@@ -66,6 +66,25 @@ export async function POST(request: Request) {
   if (updateError) {
     console.error('[family/join] update error:', updateError)
     return NextResponse.json({ error: 'Failed to join. Please try again.' }, { status: 500 })
+  }
+
+  // 6. If the kid pre-filled a health profile before this parent existed,
+  //    materialize it now (keyed to the new parent_id) and clear the stash.
+  //    Non-fatal: a failure here shouldn't block a successful join.
+  if (family.pending_health_profile) {
+    const { error: hpError } = await admin.from('health_profiles').upsert(
+      {
+        parent_id: user.id,
+        ...(family.pending_health_profile as Record<string, unknown>),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'parent_id' },
+    )
+    if (hpError) {
+      console.error('[family/join] pending profile apply error:', hpError)
+    } else {
+      await admin.from('families').update({ pending_health_profile: null }).eq('id', family.id)
+    }
   }
 
   return NextResponse.json({ success: true })

@@ -47,6 +47,11 @@ create table public.families (
   parent_id     uuid references public.users(id) on delete set null,
   invite_code   text not null unique default upper(substr(md5(random()::text), 1, 8)),
   agent_enabled boolean not null default true,
+  -- Kid can author the parent's health profile before a parent links. Since
+  -- health_profiles is keyed to (and writable only by) the parent, we stash the
+  -- kid's answers here as JSON and materialize them into health_profiles the
+  -- moment a parent joins (see /api/family/join). Cleared once applied.
+  pending_health_profile jsonb,
   created_at    timestamptz not null default now()
 );
 

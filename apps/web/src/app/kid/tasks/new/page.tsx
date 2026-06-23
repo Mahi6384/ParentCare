@@ -85,7 +85,7 @@ function HealthProfileSidebar({
                         Papa&apos;s Health Profile
                     </span>
                     <Link
-                        href="/onboarding/chat"
+                        href="/kid/profile-setup"
                         style={{
                             fontSize: 12,
                             color: "var(--pc-brand)",
@@ -208,7 +208,7 @@ function HealthProfileSidebar({
                             Health profile not set up yet.
                         </p>
                         <Link
-                            href="/onboarding/chat"
+                            href="/kid/profile-setup"
                             className="pc-btn-ghost"
                             style={{ fontSize: 12 }}
                         >
