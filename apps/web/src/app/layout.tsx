@@ -85,7 +85,7 @@ export default function RootLayout({
           --pc-body:    var(--font-plus-jakarta-sans), system-ui, sans-serif;
           --pc-mono:    var(--font-jetbrains-mono), monospace;
       */}
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {/*
           No-flash theme script — executes during HTML parsing, before any
           visible element paints, so dark-mode users never see a white flash.
