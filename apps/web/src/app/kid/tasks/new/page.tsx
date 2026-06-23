@@ -343,15 +343,8 @@ export default async function NewTaskPage() {
             {/* Shared nav bar — "Tasks" is the active tab */}
             <KidNavBar userName={profile?.name ?? ""} activeTab="tasks" />
 
-            {/* Two-column body — same grid as /kid/dashboard */}
-            <div
-                style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 360px",
-                    gap: 24,
-                    padding: "24px 28px 60px",
-                }}
-            >
+            {/* Two-column body — same grid as /kid/dashboard (stacks below 880px) */}
+            <div className="pc-shell pc-body-pad">
                 {/* LEFT — interactive form (Client Component) */}
                 <NewTaskForm
                     familyId={family?.id}

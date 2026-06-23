@@ -313,7 +313,7 @@ export default function NewTaskForm({ familyId, healthProfile, parentId, parentT
       </p>
 
       {/* ── Template picker ─────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 32 }}>
+      <div className="pc-type-grid" style={{ marginBottom: 32 }}>
         {templateKeys.map(key => {
           const t          = TEMPLATE_DEFAULTS[key]
           const isSelected = form.selectedTemplate === key
@@ -366,7 +366,7 @@ export default function NewTaskForm({ familyId, healthProfile, parentId, parentT
           {/* When — frequency + time */}
           <div>
             <label className="pc-label">When</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="pc-field-pair">
               <select
                 className="pc-input"
                 value={form.recurrence}

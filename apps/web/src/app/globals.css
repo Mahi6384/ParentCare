@@ -264,3 +264,103 @@ body {
 .pc-pill-warn   { background: rgba(198, 138, 30, 0.16); color: var(--pc-warn); }
 .pc-pill-bad    { background: rgba(176, 67, 44, 0.14); color: var(--pc-bad); }
 .pc-pill-neutral { background: var(--pc-surface2); color: var(--pc-ink2); border-color: var(--pc-hair); }
+
+/* ─────────────────────────────────────────────
+   5. RESPONSIVE LAYOUT CLASSES
+   Why these live here (not inline): a media query needs a selector,
+   and inline style={{}} has none. Any layout property that must CHANGE
+   at a breakpoint is extracted into a class below; properties that never
+   change stay inline on the element. The @media overrides are placed
+   AFTER each base rule so equal-specificity ordering lets them win.
+
+   Breakpoints: 880px (two-col → stacked) · 720px (nav → hamburger)
+                560px (phone: tighter grids + gutters)
+───────────────────────────────────────────── */
+
+/* Two-column page body → single column once the 360px sidebar can't fit.
+   The sidebar is the 2nd DOM child, so stacking drops it BELOW the main
+   content automatically — no `order` needed. */
+.pc-shell {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+}
+@media (max-width: 880px) {
+  .pc-shell { grid-template-columns: 1fr; }
+}
+
+/* Page gutter — generous on desktop, tighter on phones. */
+.pc-body-pad { padding: 24px 28px 48px; }
+@media (max-width: 560px) {
+  .pc-body-pad { padding: 16px 16px 40px; }
+}
+
+/* Task-template picker — 6 across, down to 2 on a phone. */
+.pc-type-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+@media (max-width: 880px) {
+  .pc-type-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 560px) {
+  .pc-type-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Paired form fields (frequency + time) — stack on a phone. */
+.pc-field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 560px) {
+  .pc-field-pair { grid-template-columns: 1fr; }
+}
+
+/* Kid top nav. Desktop shows the horizontal tab row; below 720px the
+   tabs hide and a hamburger reveals a dropdown drawer (toggled by the
+   `.open` class, which React adds from component state). */
+.pc-nav {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 0 28px;
+}
+@media (max-width: 560px) {
+  .pc-nav { padding: 0 16px; gap: 14px; }
+}
+
+.pc-nav-tabs   { display: flex; gap: 4px; }
+.pc-nav-burger { display: none; }
+.pc-nav-drawer { display: none; }
+
+@media (max-width: 720px) {
+  .pc-nav-tabs   { display: none; }
+  .pc-nav-burger { display: inline-flex; }
+  .pc-nav-drawer.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    background: var(--pc-bg);
+    border-bottom: 0.5px solid var(--pc-hair);
+    padding: 8px;
+    gap: 2px;
+    z-index: 20;
+  }
+}
+
+/* Streak disclosure: the full Streaks card shows on the wide layout; once the
+   sidebar would stack (≤880px) it is hidden and a compact 🔥 badge takes its
+   place in the nav — so the streak stays visible without pushing it below the
+   feed. The two are mirror images: exactly one is shown at any width. */
+.pc-streak-card { display: block; }
+.pc-nav-streak  { display: none; }
+@media (max-width: 880px) {
+  .pc-streak-card { display: none; }
+  .pc-nav-streak  { display: inline-flex; }
+}

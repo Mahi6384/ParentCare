@@ -10,7 +10,7 @@ export default function KidDashboardLoading() {
       {/* Nav bar */}
       <div style={{ height: 60, background: 'var(--pc-surface)', borderBottom: '0.5px solid var(--pc-hair)' }} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, padding: '24px 28px 40px' }}>
+      <div className="pc-shell pc-body-pad">
 
         {/* LEFT */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

@@ -109,14 +109,14 @@ function FeedCard({ item }: { item: FeedItem }) {
             <Dot color={t.dot} size={5} /> {t.label}
           </Pill>
 
-          {item.streak !== undefined && item.streak > 0 && (
+          {/* {item.streak !== undefined && item.streak > 0 && (
             <span
               className="inline-flex items-center gap-1 text-[11px] font-semibold"
               style={{ color: 'var(--pc-brand-deep)' }}
             >
               🔥 {item.streak}
             </span>
-          )}
+          )} */}
 
           {item.confidence && (
             <span className="font-mono text-[11px] text-ink-3 ml-auto">
@@ -274,24 +274,20 @@ export default async function KidDashboard() {
   const completedToday = feed.filter(f => f.tone === 'ok' || f.tone === 'warn').length
   const lastVerifiedItem = [...feed].reverse().find(f => f.tone === 'ok' || f.tone === 'warn')
 
+  // streakRows is sorted current_streak desc, so the first row is the best run.
+  // Surfaced as a compact 🔥 badge in the nav on small screens (see KidNavBar).
+  const topStreak = (streakRows as { current_streak: number }[] | null)?.[0]?.current_streak ?? 0
+
   return (
     <div
       className="flex flex-col"
       style={{ minHeight: '100vh', background: 'var(--pc-bg)', color: 'var(--pc-ink)', fontFamily: 'var(--pc-body)' }}
     >
       {/* ── Top navigation bar — extracted to KidNavBar component ── */}
-      <KidNavBar userName={profile?.name ?? ''} activeTab="overview" />
+      <KidNavBar userName={profile?.name ?? ''} activeTab="overview" streak={topStreak} />
 
-      {/* ── Body — two-column grid ── */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 360px',
-          gap: 24,
-          padding: '24px 28px 40px',
-          flex: 1,
-        }}
-      >
+      {/* ── Body — two-column grid (stacks below 880px via .pc-shell) ── */}
+      <div className="pc-shell pc-body-pad" style={{ flex: 1 }}>
         {/* ══ LEFT — Feed ══════════════════════════════════════ */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
 
@@ -440,7 +436,8 @@ export default async function KidDashboard() {
         {/* ══ RIGHT rail ═══════════════════════════════════════ */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
 
-          {/* Streaks — real data */}
+          {/* Streaks — real data. Hidden ≤880px; the nav shows a 🔥 badge instead. */}
+          <div className="pc-streak-card">
           <Card pad={16}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
               <span className="font-serif font-medium text-[16px] text-ink">Streaks</span>
@@ -505,6 +502,7 @@ export default async function KidDashboard() {
               })
             )}
           </Card>
+          </div>
 
           {/* Family panel */}
           {family?.parent_id && (
