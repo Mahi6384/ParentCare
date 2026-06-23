@@ -294,7 +294,7 @@ export default function NewTaskForm({ familyId, healthProfile, parentId, parentT
 
       {/* Breadcrumb */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--pc-ink3)', marginBottom: 20 }}>
-        <Link href="/kid/dashboard" style={{ color: 'var(--pc-ink3)', textDecoration: 'none' }}>Tasks</Link>
+        <Link href="/kid/tasks" style={{ color: 'var(--pc-ink3)', textDecoration: 'none' }}>Tasks</Link>
         <span>›</span>
         <span style={{ color: 'var(--pc-ink2)', fontWeight: 500 }}>New</span>
       </div>
@@ -530,7 +530,10 @@ export default function NewTaskForm({ familyId, healthProfile, parentId, parentT
             </div>
           </div>
 
-          {/* Saathi adaptation panel */}
+          {/* Saathi adaptation panel — only relevant when a photo is verified.
+              With "No proof required" there's nothing for Saathi to analyse, so
+              hide the adaptation copy to avoid implying verification that won't happen. */}
+          {form.proofType === 'photo' && (
           <div
             style={{
               background: 'var(--pc-brand-tint)',
@@ -552,6 +555,7 @@ export default function NewTaskForm({ familyId, healthProfile, parentId, parentT
               </p>
             </div>
           </div>
+          )}
 
         </div>
       )}
