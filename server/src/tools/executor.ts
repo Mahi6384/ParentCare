@@ -1,11 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 
-webpush.setVapidDetails(
-    `mailto:${process.env.VAPID_EMAIL ?? "noreply@parentcare.app"}`,
-    process.env.VAPID_PUBLIC_KEY!,
-    process.env.VAPID_PRIVATE_KEY!,
-);
+// Web Push is optional.
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    try {
+        const email = process.env.VAPID_EMAIL ?? "noreply@parentcare.app";
+        webpush.setVapidDetails(
+            email.startsWith("mailto:") ? email : `mailto:${email}`,
+            process.env.VAPID_PUBLIC_KEY,
+            process.env.VAPID_PRIVATE_KEY,
+        );
+    } catch (err) {
+        console.warn(
+            "[executor] web-push disabled — invalid VAPID keys:",
+            (err as Error).message,
+        );
+    }
+} else {
+    console.warn("[executor] web-push disabled — VAPID keys not set");
+}
 import type {
     GetParentHistoryInput,
     GetNutritionTrendInput,
@@ -39,7 +52,7 @@ export async function executeTool(
     name: string,
     input: unknown,
 ): Promise<unknown> {
-    console.log('[executor] running tool:', name)
+    console.log("[executor] running tool:", name);
     switch (name) {
         // ── READ TOOLS ─────────────────────────────────────────────────────────
 
@@ -184,22 +197,23 @@ export async function executeTool(
                         .eq("parent_id", inst.parent_id)
                         .maybeSingle();
 
-                    const next    = (existing?.current_streak ?? 0) + 1;
-                    const longest = Math.max(next, existing?.longest_streak ?? 0);
+                    const next = (existing?.current_streak ?? 0) + 1;
+                    const longest = Math.max(
+                        next,
+                        existing?.longest_streak ?? 0,
+                    );
 
                     // upsert handles both first-time (no row yet) and subsequent completions
-                    await supabase
-                        .from("streaks")
-                        .upsert(
-                            {
-                                task_id:        inst.task_id,
-                                parent_id:      inst.parent_id,
-                                current_streak: next,
-                                longest_streak: longest,
-                                updated_at:     new Date().toISOString(),
-                            },
-                            { onConflict: "task_id,parent_id" },
-                        );
+                    await supabase.from("streaks").upsert(
+                        {
+                            task_id: inst.task_id,
+                            parent_id: inst.parent_id,
+                            current_streak: next,
+                            longest_streak: longest,
+                            updated_at: new Date().toISOString(),
+                        },
+                        { onConflict: "task_id,parent_id" },
+                    );
                 }
             }
 
@@ -238,7 +252,7 @@ export async function executeTool(
 
             const { error } = await supabase
                 .from("notifications")
-                .insert({ user_id: kid_id, message, channel: 'websocket' });
+                .insert({ user_id: kid_id, message, channel: "websocket" });
 
             if (error)
                 throw new Error(
@@ -251,16 +265,14 @@ export async function executeTool(
             const { kid_id, task_type, title, reasoning, frequency } =
                 input as SuggestTaskInput;
 
-            const { error } = await supabase
-                .from("task_suggestions")
-                .insert({
-                    kid_id,
-                    task_type,
-                    title,
-                    reasoning,
-                    frequency,
-                    status: "pending",
-                });
+            const { error } = await supabase.from("task_suggestions").insert({
+                kid_id,
+                task_type,
+                title,
+                reasoning,
+                frequency,
+                status: "pending",
+            });
 
             if (error)
                 throw new Error(
@@ -296,8 +308,8 @@ export async function executeTool(
         case "trigger_fullscreen_alert": {
             const { parent_id, message, title } = input as {
                 parent_id: string;
-                message:   string;
-                title?:    string;
+                message: string;
+                title?: string;
             };
 
             const { data: sub } = await supabase
@@ -307,7 +319,10 @@ export async function executeTool(
                 .single();
 
             if (!sub) {
-                console.log("[executor] no push subscription for parent", parent_id);
+                console.log(
+                    "[executor] no push subscription for parent",
+                    parent_id,
+                );
                 return { ok: false, reason: "no_subscription" };
             }
 
@@ -320,8 +335,8 @@ export async function executeTool(
                 pushSub,
                 JSON.stringify({
                     title: title ?? "ParentCare",
-                    body:  message,
-                    url:   "/parent/dashboard",
+                    body: message,
+                    url: "/parent/dashboard",
                 }),
             );
 
@@ -347,13 +362,13 @@ export async function executeTool(
 
             // Insert each step row
             const stepRows = steps.map((s, i) => ({
-                routine_id:   routine.id,
-                step_index:   i,
-                section:      s.section,
-                name:         s.name,
-                reps:         s.reps ?? null,
+                routine_id: routine.id,
+                step_index: i,
+                section: s.section,
+                name: s.name,
+                reps: s.reps ?? null,
                 duration_sec: s.duration_sec ?? null,
-                rest_sec:     s.rest_sec ?? null,
+                rest_sec: s.rest_sec ?? null,
                 modification: s.modification ?? null,
             }));
 
