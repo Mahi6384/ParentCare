@@ -161,7 +161,7 @@ export default async function KidDashboard() {
 
   const [{ data: profile }, { data: family }] = await Promise.all([
     supabase.from('users').select('name').eq('id', user!.id).single(),
-    supabase.from('families').select('invite_code, parent_id').eq('kid_id', user!.id).single(),
+    supabase.from('families').select('id, invite_code, parent_id').eq('kid_id', user!.id).single(),
   ])
 
   // ── Real feed: today's task_instances for the linked parent ────
@@ -210,6 +210,22 @@ export default async function KidDashboard() {
         reason: reasonMap[inst.status] ?? '',
       }
     })
+  } else if (family?.id) {
+    // No parent linked yet → there are no task_instances. Show the tasks the kid
+    // has already created so the board isn't empty, marked as waiting-for-parent.
+    const { data: tasks } = await supabase
+      .from('tasks')
+      .select('title, schedule_time')
+      .eq('family_id', family.id)
+      .eq('is_active', true)
+      .order('schedule_time', { ascending: true })
+
+    feed = (tasks ?? []).map(t => ({
+      time:   t.schedule_time ? t.schedule_time.slice(0, 5) : '—',
+      task:   t.title,
+      tone:   'pending' as FeedTone,
+      reason: 'Waiting for Papa to connect — share your invite code so this starts.',
+    }))
   }
 
   // ── 7-day strip (real data) ──────────────────────────────────
@@ -321,7 +337,6 @@ export default async function KidDashboard() {
                 )}
               </div>
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                <span className="pc-pill pc-pill-neutral">🔕 Quiet mode</span>
                 <Link href="/kid/tasks/new" className="pc-pill pc-pill-brand" style={{ textDecoration: 'none' }}>＋ New task</Link>
               </div>
             </div>
