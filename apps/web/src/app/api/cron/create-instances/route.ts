@@ -29,6 +29,34 @@ function todayInIST(): string {
   return istNow.toISOString().slice(0, 10)
 }
 
+function shouldCreateToday(
+  recurrence: string,
+  createdAt: string,
+  todayIST: string,  // 'YYYY-MM-DD' in IST
+): boolean {
+  if (recurrence === 'daily') return true
+  if (recurrence === 'once')  return false
+
+  // Shift the task's creation timestamp into IST so weekday comparisons are correct
+  const taskCreatedIST = new Date(new Date(createdAt).getTime() + IST_OFFSET_MS)
+  const todayDate      = new Date(`${todayIST}T00:00:00+05:30`)
+
+  if (recurrence === 'weekly') {
+    // Only on the same weekday the task was originally created
+    return taskCreatedIST.getUTCDay() === todayDate.getUTCDay()
+  }
+
+  if (recurrence === 'custom') {
+    // Alternating: day 0 (creation day) → yes, day 1 → no, day 2 → yes, …
+    const daysDiff = Math.round(
+      (todayDate.getTime() - taskCreatedIST.getTime()) / (1000 * 60 * 60 * 24),
+    )
+    return daysDiff % 2 === 0
+  }
+
+  return false
+}
+
 function dueDateTimeInIST(dateStr: string, scheduleTime: string | null): string {
   // Combines today's date with the task's schedule_time (or 08:00 default)
   // and returns a UTC timestamptz string.
@@ -49,17 +77,18 @@ export async function GET(req: NextRequest) {
   let created  = 0
   let skipped  = 0
 
-  // ── Fetch all active daily tasks with their family ────────────────
+  // ── Fetch all active tasks with their family ──────────────────────
+  // No recurrence filter here — shouldCreateToday() decides per-task below.
   const { data: tasks, error: tasksErr } = await admin
     .from('tasks')
     .select(`
       id,
       schedule_time,
       recurrence,
+      created_at,
       families ( parent_id )
     `)
     .eq('is_active', true)
-    .eq('recurrence', 'daily')
 
   if (tasksErr) {
     console.error('[cron] tasks fetch failed:', tasksErr.message)
@@ -72,6 +101,12 @@ export async function GET(req: NextRequest) {
 
     // Skip tasks whose family has no parent linked yet
     if (!parentId) {
+      skipped++
+      continue
+    }
+
+    // Skip based on recurrence pattern — weekly, alternating, or once
+    if (!shouldCreateToday(task.recurrence, task.created_at, today)) {
       skipped++
       continue
     }

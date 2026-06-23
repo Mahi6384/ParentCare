@@ -374,6 +374,33 @@ create policy "health_profiles: kid reads" on public.health_profiles
     )
   );
 
+-- Exercise Routines: parent owns, kid in family can read
+create policy "exercise_routines: parent owns" on public.exercise_routines
+  for all using (auth.uid() = parent_id);
+create policy "exercise_routines: kid reads" on public.exercise_routines
+  for select using (
+    exists (
+      select 1 from public.families f
+      where f.parent_id = exercise_routines.parent_id and f.kid_id = auth.uid()
+    )
+  );
+
+-- Exercise Steps: no parent_id column, so authorize via the parent routine
+create policy "exercise_steps: via routine" on public.exercise_steps
+  for select using (
+    exists (
+      select 1 from public.exercise_routines r
+      where r.id = exercise_steps.routine_id
+        and (
+          r.parent_id = auth.uid()
+          or exists (
+            select 1 from public.families f
+            where f.parent_id = r.parent_id and f.kid_id = auth.uid()
+          )
+        )
+    )
+  );
+
 -- Health Concerns: kid in family can read/acknowledge
 create policy "health_concerns: kid access" on public.health_concerns
   for all using (auth.uid() = kid_id);
