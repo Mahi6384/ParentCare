@@ -6,7 +6,7 @@ export default function NewTaskLoading() {
       {/* Nav bar height placeholder */}
       <div style={{ height: 60, background: 'var(--pc-surface)', borderBottom: '0.5px solid var(--pc-hair)' }} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, padding: '24px 28px 60px' }}>
+      <div className="pc-shell pc-body-pad">
 
         {/* Left — form skeleton */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -15,7 +15,7 @@ export default function NewTaskLoading() {
           <div style={{ height: 18, width: 380, borderRadius: 6, background: 'var(--pc-surface)' }} />
 
           {/* Template picker skeleton */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginTop: 8 }}>
+          <div className="pc-type-grid" style={{ marginTop: 8 }}>
             {[...Array(5)].map((_, i) => (
               <div
                 key={i}

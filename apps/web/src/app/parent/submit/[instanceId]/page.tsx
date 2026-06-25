@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { getDict } from '@/lib/i18n/server'
 import SubmitForm from './SubmitForm'
 
 /*
@@ -21,6 +22,7 @@ export default async function SubmitPage({ params }: Props) {
   const { instanceId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const t = await getDict()
 
   // Fetch the instance, confirm it belongs to this parent and is still pending
   const { data: instance } = await supabase
@@ -50,6 +52,7 @@ export default async function SubmitPage({ params }: Props) {
   })
 
   const alreadyDone = !['pending', 'in_progress'].includes(instance.status)
+  const statusLabels = t.status as Record<string, string>
 
   return (
     <div
@@ -63,7 +66,7 @@ export default async function SubmitPage({ params }: Props) {
             href="/parent/dashboard"
             style={{ fontSize: 15, color: 'var(--pc-ink3)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            ← Wapas
+            ← {t.common.back}
           </Link>
         </div>
 
@@ -78,8 +81,8 @@ export default async function SubmitPage({ params }: Props) {
           </div>
           <div style={{ marginTop: 8, fontSize: 16, color: 'var(--pc-ink2)' }}>
             {alreadyDone
-              ? `Yeh task pehle hi ho chuka hai — status: ${instance.status}`
-              : `Due ${dueTime} · photo se verify hoga`
+              ? t.submit.doneStatus(statusLabels[instance.status] ?? instance.status)
+              : t.submit.dueSub(dueTime)
             }
           </div>
         </div>
@@ -94,7 +97,7 @@ export default async function SubmitPage({ params }: Props) {
                 color: 'var(--pc-ink3)', fontSize: 15,
               }}
             >
-              Yeh task pehle submit ho chuka hai. ✓
+              {t.submit.alreadyDoneCard}
             </div>
           ) : (
             <SubmitForm instanceId={instanceId} parentId={user!.id} />

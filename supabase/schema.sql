@@ -47,6 +47,11 @@ create table public.families (
   parent_id     uuid references public.users(id) on delete set null,
   invite_code   text not null unique default upper(substr(md5(random()::text), 1, 8)),
   agent_enabled boolean not null default true,
+  -- Kid can author the parent's health profile before a parent links. Since
+  -- health_profiles is keyed to (and writable only by) the parent, we stash the
+  -- kid's answers here as JSON and materialize them into health_profiles the
+  -- moment a parent joins (see /api/family/join). Cleared once applied.
+  pending_health_profile jsonb,
   created_at    timestamptz not null default now()
 );
 
@@ -371,6 +376,33 @@ create policy "health_profiles: kid reads" on public.health_profiles
     exists (
       select 1 from public.families f
       where f.parent_id = health_profiles.parent_id and f.kid_id = auth.uid()
+    )
+  );
+
+-- Exercise Routines: parent owns, kid in family can read
+create policy "exercise_routines: parent owns" on public.exercise_routines
+  for all using (auth.uid() = parent_id);
+create policy "exercise_routines: kid reads" on public.exercise_routines
+  for select using (
+    exists (
+      select 1 from public.families f
+      where f.parent_id = exercise_routines.parent_id and f.kid_id = auth.uid()
+    )
+  );
+
+-- Exercise Steps: no parent_id column, so authorize via the parent routine
+create policy "exercise_steps: via routine" on public.exercise_steps
+  for select using (
+    exists (
+      select 1 from public.exercise_routines r
+      where r.id = exercise_steps.routine_id
+        and (
+          r.parent_id = auth.uid()
+          or exists (
+            select 1 from public.families f
+            where f.parent_id = r.parent_id and f.kid_id = auth.uid()
+          )
+        )
     )
   );
 

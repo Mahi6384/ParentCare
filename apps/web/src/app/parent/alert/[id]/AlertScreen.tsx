@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useT } from '@/components/i18n/LanguageProvider'
 
 interface Props {
   instanceId: string
@@ -19,6 +20,7 @@ export default function AlertScreen({
   kidName, dueTime, alreadyDone,
 }: Props) {
   const router = useRouter()
+  const { t } = useT()
   const [snoozed, setSnoozed] = useState(false)
   const [voicePlaying, setVoicePlaying] = useState(false)
 
@@ -51,8 +53,8 @@ export default function AlertScreen({
       }}>
         <div>
           <div style={{ fontSize: 56, marginBottom: 16 }}>✓</div>
-          <div className="font-serif" style={{ fontSize: 28, marginBottom: 10 }}>Ho gaya!</div>
-          <div style={{ fontSize: 15, opacity: 0.8 }}>Yeh task pehle hi complete ho chuka hai.</div>
+          <div className="font-serif" style={{ fontSize: 28, marginBottom: 10 }}>{t.alert.doneTitle}</div>
+          <div style={{ fontSize: 15, opacity: 0.8 }}>{t.alert.doneBody}</div>
         </div>
       </div>
     )
@@ -77,7 +79,7 @@ export default function AlertScreen({
         <span style={{ fontFamily: 'var(--pc-mono)', fontSize: 11, letterSpacing: '0.08em', fontWeight: 700 }}>
           🔔 PARENTCARE
         </span>
-        <span style={{ fontFamily: 'var(--pc-mono)', fontSize: 11, letterSpacing: '0.05em' }}>abhi</span>
+        <span style={{ fontFamily: 'var(--pc-mono)', fontSize: 11, letterSpacing: '0.05em' }}>{t.alert.now}</span>
       </div>
 
       {/* Icon circle */}
@@ -107,14 +109,14 @@ export default function AlertScreen({
           className="font-serif"
           style={{ fontSize: 38, lineHeight: 1.15, letterSpacing: '-0.02em', marginBottom: 20 }}
         >
-          Papa, time for your<br />
+          {t.alert.titleLead}<br />
           <em>{taskTitle.toLowerCase()}.</em>
         </div>
 
         {/* Description */}
         <div style={{ fontSize: 16, lineHeight: 1.65, opacity: 0.85, marginBottom: 32 }}>
-          <strong>{kidName}</strong> wants you to finish before <strong>{dueTime}</strong>.<br />
-          Sirf 20 minute — main aapke saath hoon.
+          {t.alert.deadline(kidName, dueTime)}<br />
+          {t.alert.reassurance}
         </div>
 
         {/* Voice note player */}
@@ -136,7 +138,7 @@ export default function AlertScreen({
             {voicePlaying ? '⏸' : '▶'}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{kidName}'s voice note</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{t.alert.voiceNote(kidName)}</div>
             <div style={{ fontFamily: 'var(--pc-mono)', fontSize: 11, opacity: 0.65, letterSpacing: '0.04em' }}>
               ∿∿∿∿∿∿∿∿∿∿  00:11
             </div>
@@ -155,7 +157,7 @@ export default function AlertScreen({
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
             }}
           >
-            ▶ &nbsp;SHURU KAREIN
+            {t.alert.start}
           </button>
 
           <button
@@ -171,7 +173,7 @@ export default function AlertScreen({
               transition: 'opacity 0.2s',
             }}
           >
-            {snoozed ? 'Reminder set ✓' : '30 minute baad yaad dilaana'}
+            {snoozed ? t.alert.reminderSet : t.alert.remindLater}
           </button>
         </div>
       </div>

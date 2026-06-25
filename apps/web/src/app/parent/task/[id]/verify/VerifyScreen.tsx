@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { useT } from '@/components/i18n/LanguageProvider'
 
 interface Props {
   instanceId: string
@@ -17,6 +18,7 @@ export default function VerifyScreen({
   instanceId, taskTitle, photoUrl, submissionId,
 }: Props) {
   const router = useRouter()
+  const { t } = useT()
   const [done, setDone] = useState(false)
 
   useEffect(() => {
@@ -87,12 +89,10 @@ export default function VerifyScreen({
           )}
           <div>
             <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--pc-ink)' }}>
-              {done ? 'Ho gaya!' : 'Saathi dekh raha hai...'}
+              {done ? t.verify.doneTitle : t.verify.checkingTitle}
             </div>
             <div style={{ fontSize: 14, color: 'var(--pc-ink3)', marginTop: 6 }}>
-              {done
-                ? 'Result aa gaya, redirect ho rahe hain'
-                : 'Aapki photo analyze ho rahi hai. Isme 1–2 minute lag sakte hain.'}
+              {done ? t.verify.doneBody : t.verify.checkingBody}
             </div>
           </div>
         </div>

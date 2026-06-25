@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { getDict } from '@/lib/i18n/server'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -10,6 +11,7 @@ export default async function ResultPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const t = await getDict()
 
   const { data: instance } = await supabase
     .from('task_instances')
@@ -52,7 +54,7 @@ export default async function ResultPage({ params }: Props) {
     .select('users!families_kid_id_fkey(name)')
     .eq('parent_id', user!.id)
     .single()
-  const kidName = (familyData?.users as unknown as { name: string } | null)?.name ?? 'beta'
+  const kidName = (familyData?.users as unknown as { name: string } | null)?.name ?? t.result.kidFallback
 
   // photo_url is a storage path, not a public URL — generate a signed URL so the browser can load it
   let photoUrl: string | null = null
@@ -76,7 +78,7 @@ export default async function ResultPage({ params }: Props) {
           href="/parent/dashboard"
           style={{ fontSize: 15, color: 'var(--pc-ink3)', textDecoration: 'none' }}
         >
-          ← Wapas
+          ← {t.common.back}
         </Link>
       </div>
 
@@ -104,15 +106,15 @@ export default async function ResultPage({ params }: Props) {
               fontFamily: 'var(--pc-mono)', fontSize: 11, letterSpacing: '0.08em', fontWeight: 700,
               color: passed ? 'var(--pc-ok)' : 'var(--pc-bad)',
             }}>
-              {passed ? 'HO GAYA, PAPA' : 'DOBARA KOSHISH KAREIN'}
+              {passed ? t.result.passedLabel : t.result.failedLabel}
             </span>
           </div>
 
           {/* Main message */}
           <div className="font-serif" style={{ fontSize: 22, lineHeight: 1.3, marginBottom: 12 }}>
             {passed
-              ? `${task.title} bahut accha hua! 🎉`
-              : 'Koi baat nahi — kal phir try karein.'}
+              ? t.result.passedMsg(task.title)
+              : t.result.failedMsg}
           </div>
 
           {/* Agent reasoning */}
@@ -125,10 +127,10 @@ export default async function ResultPage({ params }: Props) {
           {/* Stats row */}
           <div style={{ display: 'flex', gap: 10 }}>
             {aiResult?.confidence != null && (
-              <StatChip label="CONFIDENCE" value={aiResult.confidence.toFixed(2)} />
+              <StatChip label={t.result.confidence} value={aiResult.confidence.toFixed(2)} />
             )}
             {streak > 0 && (
-              <StatChip label="STREAK" value={`⚡ ${streak} din`} highlight />
+              <StatChip label={t.result.streak} value={t.result.streakValue(streak)} highlight />
             )}
           </div>
         </div>
@@ -152,7 +154,7 @@ export default async function ResultPage({ params }: Props) {
               S
             </div>
             <div style={{ fontSize: 14, color: 'var(--pc-brand-deep)', fontStyle: 'italic', lineHeight: 1.55 }}>
-              {`"${kidName} ko aapki photo bhej di hai. Bahut achha kiya aaj!"`}
+              {`"${t.result.saathiSent(kidName)}"`}
             </div>
           </div>
         </div>
@@ -169,7 +171,7 @@ export default async function ResultPage({ params }: Props) {
             fontSize: 17, fontWeight: 700, textAlign: 'center',
           }}
         >
-          Theek hai
+          {t.result.ok}
         </Link>
       </div>
     </div>
