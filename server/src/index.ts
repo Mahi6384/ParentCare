@@ -3,6 +3,7 @@ import express from 'express'
 import { runVerificationAgent } from './agents/verificationAgent'
 import { runExerciseCoachAgent } from './agents/exerciseCoachAgent'
 import { runNudgeAgentForAllFamilies } from './agents/nudgeAgent'
+import { runReminderSweep } from './jobs/reminderSweep'
 
 const app  = express()
 const PORT = process.env.PORT ?? 3001
@@ -80,10 +81,32 @@ app.post('/jobs/exercise-coach', async (req, res) => {
   })
 })
 
+// ── Manual reminder sweep (for testing) ──────────────────────────────────────
+// Lets you trigger a sweep on demand instead of waiting for the 5-min tick.
+app.post('/jobs/reminders', async (_req, res) => {
+  try {
+    const result = await runReminderSweep()
+    res.json(result)
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message })
+  }
+})
+
 const server = app.listen(PORT, () => {
   const mode = process.env.UPSTASH_REDIS_URL ? 'queue (BullMQ)' : 'direct (no Redis)'
   console.log(`[server] listening on http://localhost:${PORT} — mode: ${mode}`)
 })
+
+// ── Reminder sweep heartbeat ──────────────────────────────────────────────────
+// The worker is long-lived, so it schedules itself — no external cron needed.
+// Every 5 min it pushes a reminder for any pending task due around now.
+const SWEEP_INTERVAL_MS = 5 * 60 * 1000
+setInterval(() => {
+  runReminderSweep().catch((err) =>
+    console.error('[reminder-sweep] error:', (err as Error).message),
+  )
+}, SWEEP_INTERVAL_MS)
+console.log('[server] reminder sweep scheduled — every 5 min')
 
 server.on('error', (err: NodeJS.ErrnoException) => {
   if (err.code === 'EADDRINUSE') {
