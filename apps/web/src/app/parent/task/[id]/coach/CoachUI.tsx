@@ -27,6 +27,8 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
   const [repAdjustment, setRepAdjustment] = useState(0)
   const restTimer      = useRef<ReturnType<typeof setInterval> | null>(null)
   const overrideRestRef = useRef<number | null>(null)
+  const [exerciseCount, setExerciseCount] = useState<number | null>(null)
+  const exerciseTimer  = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const step = steps[currentIdx]
 
@@ -41,15 +43,33 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
     window.speechSynthesis.speak(utt)
   }, [lang])
 
+  // The exact words Saathi speaks — shared by the auto-play effect and the replay button.
+  const spokenLine =
+    saathiLines[step.name] ??
+    t.coach.spokenFallback(step.name, step.reps, step.duration_sec)
+
   useEffect(() => {
-    const line = saathiLines[step.name] ??
-      t.coach.spokenFallback(step.name, step.reps, step.duration_sec)
-    speak(line)
+    speak(spokenLine)
     return () => { window.speechSynthesis?.cancel() }
-  }, [currentIdx, step, speak, saathiLines, t])
+  }, [currentIdx, spokenLine, speak])
 
   // Reset rep adjustment when the step changes
   useEffect(() => { setRepAdjustment(0) }, [currentIdx])
+
+  // ── Exercise countdown (timed steps only; the restMode dep pauses it) ─────
+  // When restMode flips, the dep array changes → React runs cleanup (clearInterval)
+  // then re-runs this body, which bails. No manual pause/resume to keep in sync.
+  useEffect(() => {
+    if (restMode || step.duration_sec == null) { setExerciseCount(null); return }
+    setExerciseCount(step.duration_sec)
+    exerciseTimer.current = setInterval(() => {
+      setExerciseCount(c => {
+        if (c == null || c <= 1) { clearInterval(exerciseTimer.current!); return 0 }
+        return c - 1
+      })
+    }, 1000)
+    return () => { if (exerciseTimer.current) clearInterval(exerciseTimer.current) }
+  }, [currentIdx, step.duration_sec, restMode])
 
   // ── Rest countdown ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -242,7 +262,11 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
               <MetricChip label={t.coach.repsLabel} value={String(displayReps)} />
             )}
             {step.duration_sec != null && (
-              <MetricChip label={t.coach.timeLabel} value={`${step.duration_sec}s`} />
+              <MetricChip
+                label={t.coach.timeLabel}
+                value={exerciseCount === 0 ? '✓' : `${exerciseCount ?? step.duration_sec}s`}
+                accent={exerciseCount === 0}
+              />
             )}
             {step.rest_sec != null && step.rest_sec > 0 && (
               <MetricChip label={t.coach.restLabel} value={`${step.rest_sec}s`} />
@@ -276,9 +300,21 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
           }}>
             S
           </div>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--pc-ink3)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.04em' }}>
-              {t.coach.saathiSpeaking}
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <div style={{ fontSize: 11, color: 'var(--pc-ink3)', fontWeight: 600, letterSpacing: '0.04em' }}>
+                {t.coach.saathiSpeaking}
+              </div>
+              <button
+                onClick={() => speak(spokenLine)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--pc-brand)', fontSize: 12, fontWeight: 600,
+                  fontFamily: 'var(--pc-body)', padding: 0,
+                }}
+              >
+                {t.coach.replay}
+              </button>
             </div>
             <div style={{ fontSize: 14, color: 'var(--pc-ink2)', fontStyle: 'italic', lineHeight: 1.55 }}>
               "{saathiLine}"
@@ -328,7 +364,7 @@ export default function CoachUI({ instanceId, taskTitle, steps }: Props) {
   )
 }
 
-function MetricChip({ label, value }: { label: string; value: string }) {
+function MetricChip({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div style={{
       flex: 1, padding: '10px 12px', textAlign: 'center',
@@ -343,7 +379,7 @@ function MetricChip({ label, value }: { label: string; value: string }) {
       </div>
       <div style={{
         fontFamily: 'var(--pc-mono)', fontSize: 22,
-        fontWeight: 700, color: 'var(--pc-ink)', marginTop: 2,
+        fontWeight: 700, color: accent ? 'var(--pc-ok)' : 'var(--pc-ink)', marginTop: 2,
       }}>
         {value}
       </div>
