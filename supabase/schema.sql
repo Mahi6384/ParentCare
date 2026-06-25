@@ -80,6 +80,7 @@ create table public.task_instances (
   family_id   uuid not null references public.families(id) on delete cascade,
   due_at      timestamptz not null,
   status      task_status not null default 'pending',
+  reminder_sent_at timestamptz,               -- when the around-due-time push was delivered (null = not yet)
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
@@ -282,6 +283,8 @@ create table public.audit_log (
 
 create index on public.task_instances (parent_id, status);
 create index on public.task_instances (task_id, due_at);
+-- Backs the reminder sweep: pending, not-yet-reminded instances due around now.
+create index on public.task_instances (due_at) where status = 'pending' and reminder_sent_at is null;
 create index on public.submissions (task_instance_id);
 create index on public.ai_results (submission_id);
 create index on public.agent_decisions (family_id, created_at desc);

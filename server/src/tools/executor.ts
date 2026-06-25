@@ -1,24 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import webpush from "web-push";
-
-// Web Push is optional.
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-    try {
-        const email = process.env.VAPID_EMAIL ?? "noreply@parentcare.app";
-        webpush.setVapidDetails(
-            email.startsWith("mailto:") ? email : `mailto:${email}`,
-            process.env.VAPID_PUBLIC_KEY,
-            process.env.VAPID_PRIVATE_KEY,
-        );
-    } catch (err) {
-        console.warn(
-            "[executor] web-push disabled — invalid VAPID keys:",
-            (err as Error).message,
-        );
-    }
-} else {
-    console.warn("[executor] web-push disabled — VAPID keys not set");
-}
+import { sendPushToUser } from "../lib/push";
 import type {
     GetParentHistoryInput,
     GetNutritionTrendInput,
@@ -312,33 +293,19 @@ export async function executeTool(
                 title?: string;
             };
 
-            const { data: sub } = await supabase
-                .from("push_subscriptions")
-                .select("endpoint, keys_json")
-                .eq("user_id", parent_id)
-                .single();
+            const res = await sendPushToUser(parent_id, {
+                title: title ?? "ParentCare",
+                body: message,
+                url: "/parent/dashboard",
+            });
 
-            if (!sub) {
+            if (!res.ok) {
                 console.log(
                     "[executor] no push subscription for parent",
                     parent_id,
                 );
-                return { ok: false, reason: "no_subscription" };
+                return { ok: false, reason: res.reason };
             }
-
-            const pushSub = {
-                endpoint: sub.endpoint,
-                keys: sub.keys_json as { p256dh: string; auth: string },
-            };
-
-            await webpush.sendNotification(
-                pushSub,
-                JSON.stringify({
-                    title: title ?? "ParentCare",
-                    body: message,
-                    url: "/parent/dashboard",
-                }),
-            );
 
             console.log("[executor] push sent to parent", parent_id);
             return { ok: true };
