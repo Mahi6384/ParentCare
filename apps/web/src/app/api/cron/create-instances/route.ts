@@ -76,6 +76,7 @@ export async function GET(req: NextRequest) {
   const today  = todayInIST()
   let created  = 0
   let skipped  = 0
+  let failed   = 0
 
   // ── Fetch all active tasks with their family ──────────────────────
   // No recurrence filter here — shouldCreateToday() decides per-task below.
@@ -83,6 +84,7 @@ export async function GET(req: NextRequest) {
     .from('tasks')
     .select(`
       id,
+      family_id,
       schedule_time,
       recurrence,
       created_at,
@@ -132,17 +134,25 @@ export async function GET(req: NextRequest) {
       .insert({
         task_id:   task.id,
         parent_id: parentId,
+        family_id: task.family_id,
         due_at:    dueDateTimeInIST(today, task.schedule_time),
         status:    'pending',
       })
 
     if (insertErr) {
       console.error(`[cron] insert failed for task ${task.id}:`, insertErr.message)
+      failed++
     } else {
       created++
     }
   }
 
-  console.log(`[cron] create-instances done — created: ${created}, skipped: ${skipped}`)
-  return NextResponse.json({ created, skipped, date: today })
+  console.log(`[cron] create-instances done — created: ${created}, skipped: ${skipped}, failed: ${failed}`)
+
+  // A non-zero `failed` count means some inserts threw (and were swallowed in the
+  // loop so one bad task can't block the rest). Surface it in the response AND flip
+  // the HTTP status to 500 so Vercel's cron dashboard shows the run as failed —
+  // this is exactly the silent-failure class of bug that hid the missing family_id.
+  const status = failed > 0 ? 500 : 200
+  return NextResponse.json({ created, skipped, failed, date: today }, { status })
 }
