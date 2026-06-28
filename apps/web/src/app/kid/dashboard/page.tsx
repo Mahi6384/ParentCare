@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import SaathiMark from '@/components/ui/SaathiMark'
 import KidNavBar from '@/components/kid/KidNavBar'
+import OverrideControl from '@/components/kid/OverrideControl'
 
 /*
   Kid Dashboard — Overview artboard (artboard #02 in the design).
@@ -87,6 +88,8 @@ interface FeedItem {
   streak?:    number
   reason:     string
   confidence?: number
+  instanceId?: string  // present only for real task_instances → enables override
+  status?:    string   // raw task_instances.status, drives the override active state
 }
 
 function FeedCard({ item }: { item: FeedItem }) {
@@ -148,6 +151,13 @@ function FeedCard({ item }: { item: FeedItem }) {
             <button className="pc-btn-ghost text-xs py-1.5 px-3">Skip for today</button>
           </div>
         )}
+
+        {/* Manual override — kid is the final authority on the result.
+            Only on real instances that have actually been acted on (not
+            still-pending ones, where there's no result yet to correct). */}
+        {item.instanceId && item.tone !== 'pending' && (
+          <OverrideControl instanceId={item.instanceId} status={item.status ?? ''} />
+        )}
       </div>
     </Card>
   )
@@ -205,9 +215,11 @@ export default async function KidDashboard() {
       const time  = due.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
       return {
         time,
-        task:   title,
-        tone:   (toneMap[inst.status] ?? 'pending') as FeedTone,
-        reason: reasonMap[inst.status] ?? '',
+        task:       title,
+        tone:       (toneMap[inst.status] ?? 'pending') as FeedTone,
+        reason:     reasonMap[inst.status] ?? '',
+        instanceId: inst.id,
+        status:     inst.status,
       }
     })
   } else if (family?.id) {
