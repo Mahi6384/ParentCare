@@ -19,7 +19,7 @@ import SaathiMark from '@/components/ui/SaathiMark'
   there is no duplicated link markup to keep in sync.
 */
 
-type TabId = 'overview' | 'tasks' | 'concerns' | 'report' | 'family'
+type TabId = 'overview' | 'tasks' | 'concerns' | 'activity' | 'report' | 'family'
 
 interface KidNavBarProps {
   userName:  string
@@ -32,6 +32,7 @@ const NAV_ITEMS: { id: TabId; label: string; href: string }[] = [
   { id: 'overview',  label: 'Overview',      href: '/kid/dashboard' },
   { id: 'tasks',     label: 'Tasks',         href: '/kid/tasks'     },
   { id: 'concerns',  label: 'Concerns',      href: '/kid/concerns' },
+  { id: 'activity',  label: 'Activity',      href: '/kid/activity'  },
   { id: 'report',    label: 'Weekly Report', href: '/kid/report'    },
   { id: 'family',    label: 'Family',        href: '/kid/family'    },
 ]

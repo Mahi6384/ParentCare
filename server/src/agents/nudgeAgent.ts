@@ -140,14 +140,26 @@ Start with get_family_context, then get_missed_tasks, then get_parent_history, t
   }
 
   // ── 4. Audit log ────────────────────────────────────────────────────────────
-  await supabase
+  // family_id and trigger_event are NOT NULL — without them the insert fails
+  // silently and the kid's activity log stays empty.
+  const { data: fam } = await supabase
+    .from('families')
+    .select('id')
+    .eq('parent_id', parentId)
+    .single()
+
+  const { error: auditErr } = await supabase
     .from('agent_decisions')
     .insert({
-      loop_type:    'nudge',
-      parent_id:    parentId,
-      tools_called: toolsCalledThisRun,
-      reasoning:    response.response.text(),
+      family_id:     fam?.id ?? null,
+      parent_id:     parentId,
+      loop_type:     'nudge',
+      trigger_event: 'morning_cron',
+      tools_called:  toolsCalledThisRun,
+      reasoning:     response.response.text(),
     })
+
+  if (auditErr) console.error('[nudge-agent] audit log insert failed:', auditErr.message)
 
   console.log(`[nudge-agent] done — parent ${parentId} — tools: ${toolsCalledThisRun.join(', ')}`)
 }

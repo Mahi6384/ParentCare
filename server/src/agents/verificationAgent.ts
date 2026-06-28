@@ -205,12 +205,26 @@ Start by checking recent history, then analyse the photo, then record the result
     }
 
     // ── 6. Audit log ─────────────────────────────────────────────────────
-    await supabase.from("agent_decisions").insert({
-        loop_type: "verification",
+    // family_id and trigger_event are NOT NULL in the schema — omitting them
+    // (as we did before) makes the insert fail silently, leaving the kid's
+    // activity log empty. Look up the family before writing.
+    const { data: fam } = await supabase
+        .from("families")
+        .select("id")
+        .eq("parent_id", instance.parent_id)
+        .single();
+
+    const { error: auditErr } = await supabase.from("agent_decisions").insert({
+        family_id: fam?.id ?? null,
         parent_id: instance.parent_id,
+        loop_type: "verification",
+        trigger_event: `submission:${submissionId}`,
         tools_called: toolsCalledThisRun,
         reasoning: response.response.text(),
     });
+
+    if (auditErr)
+        console.error("[agent] audit log insert failed:", auditErr.message);
 
     console.log(
         `[agent] done — submission ${submissionId} — tools: ${toolsCalledThisRun.join(", ")}`,
