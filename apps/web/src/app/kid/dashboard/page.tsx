@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import SaathiMark from '@/components/ui/SaathiMark'
 import KidNavBar from '@/components/kid/KidNavBar'
 import OverrideControl from '@/components/kid/OverrideControl'
+import KidRealtime from '@/components/kid/KidRealtime'
 
 /*
   Kid Dashboard — Overview artboard (artboard #02 in the design).
@@ -297,6 +298,9 @@ export default async function KidDashboard() {
     >
       {/* ── Top navigation bar — extracted to KidNavBar component ── */}
       <KidNavBar userName={profile?.name ?? ''} activeTab="overview" streak={topStreak} />
+
+      {/* Live updates — toast on agent alerts, auto-refresh on verification results */}
+      <KidRealtime kidId={user!.id} parentId={family?.parent_id ?? undefined} />
 
       {/* ── Body — two-column grid (stacks below 880px via .pc-shell) ── */}
       <div className="pc-shell pc-body-pad" style={{ flex: 1 }}>
