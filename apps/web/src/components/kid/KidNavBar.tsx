@@ -33,7 +33,7 @@ const NAV_ITEMS: { id: TabId; label: string; href: string }[] = [
   { id: 'tasks',     label: 'Tasks',         href: '/kid/tasks'     },
   { id: 'concerns',  label: 'Concerns',      href: '/kid/concerns' },
   { id: 'activity',  label: 'Activity',      href: '/kid/activity'  },
-  { id: 'report',    label: 'Weekly Report', href: '/kid/report'    },
+  { id: 'report',    label: 'Progress',      href: '/kid/report'    },
   { id: 'family',    label: 'Family',        href: '/kid/family'    },
 ]
 
