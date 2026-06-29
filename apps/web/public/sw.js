@@ -7,7 +7,10 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(title, {
       body,
       icon:  '/icons/icon-192x192.png',
-      badge: '/icons/icon-192x192.png',
+      // badge = the small status-bar glyph. Android keeps only the
+      // alpha channel and tints it, so this must be a monochrome,
+      // transparent-background asset — not the full-colour app icon.
+      badge: '/icons/badge-96x96.png',
       data:  data.url ?? '/',
     })
   )

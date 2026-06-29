@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Newsreader, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme/ThemeProvider'
@@ -53,11 +53,31 @@ export const metadata: Metadata = {
   title:       'ParentCare',
   description: 'Kids assign tasks. Parents complete them. AI verifies the proof.',
   manifest:    '/manifest.json',
+  // src/app/icon.svg is auto-served as the favicon by Next's file
+  // convention; we only need to declare the apple-touch icon, which
+  // iOS pulls for the home-screen bookmark.
+  icons: {
+    apple: '/icons/apple-touch-icon.png',
+  },
   appleWebApp: {
     capable:         true,
     statusBarStyle:  'default',
     title:           'ParentCare',
   },
+}
+
+/*
+  themeColor lives in the viewport export (not metadata) since Next 14.
+  It paints the OS chrome — Android status bar, installed-PWA title bar —
+  saffron, so the app feels native rather than bolted onto a white bar.
+  Two stops let it track light/dark: deep saffron reads better on a dark
+  status bar, the standard brand saffron on light.
+*/
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#D26B26' },
+    { media: '(prefers-color-scheme: dark)',  color: '#A8501A' },
+  ],
 }
 
 export default function RootLayout({
