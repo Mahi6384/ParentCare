@@ -61,7 +61,7 @@ export async function sendPushToUser(
   })
 
   // allSettled: one expired device shouldn't stop the others from receiving it.
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     subs.map((sub) =>
       webpush.sendNotification(
         { endpoint: sub.endpoint, keys: sub.keys_json as { p256dh: string; auth: string } },
@@ -69,6 +69,42 @@ export async function sendPushToUser(
       ),
     ),
   )
+
+  // Tally what actually went out, and collect dead endpoints to prune.
+  // 404/410 from the push service means the subscription is gone (PWA
+  // uninstalled, permission revoked, key rotated) — deleting it stops us
+  // retrying a device that will never receive again.
+  let delivered = 0
+  const expiredEndpoints: string[] = []
+
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      delivered++
+      return
+    }
+    const statusCode = (r.reason as { statusCode?: number })?.statusCode
+    if (statusCode === 404 || statusCode === 410) {
+      expiredEndpoints.push(subs[i].endpoint)
+    } else {
+      console.error('[push] send failed:', (r.reason as Error)?.message ?? r.reason)
+    }
+  })
+
+  if (expiredEndpoints.length > 0) {
+    await supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', userId)
+      .in('endpoint', expiredEndpoints)
+    console.log(`[push] pruned ${expiredEndpoints.length} dead subscription(s) for ${userId}`)
+  }
+
+  // Only a real delivery counts as success — otherwise the caller (e.g. the
+  // reminder sweep) would stamp reminder_sent_at and never retry a push that
+  // never arrived.
+  if (delivered === 0) {
+    return { ok: false, reason: 'all_sends_failed' }
+  }
 
   return { ok: true }
 }
